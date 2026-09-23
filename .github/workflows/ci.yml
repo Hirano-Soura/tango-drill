@@ -1,0 +1,26 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: behavior + type
+        run: npm run check || (cat Temp/tango-drill_check.txt; exit 1)
+      - run: cat Temp/tango-drill_check.txt
+      - name: doc audit (positive control)
+        run: python Tools/DocAudit/doc_audit.py --self-test || (cat Temp/tango-drill_doc_audit_selftest.txt; exit 1)
+      - name: doc audit
+        run: python Tools/DocAudit/doc_audit.py || (cat Temp/tango-drill_doc_audit.txt; exit 1)
+      - run: cat Temp/tango-drill_doc_audit.txt

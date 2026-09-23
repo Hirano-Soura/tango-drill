@@ -1,0 +1,16 @@
+# 依存パッケージ
+node_modules/
+
+# 検査レポートの出力先(UV-4: 追跡対象外に書く)
+Temp/
+
+# Playwright の出力
+test-results/
+playwright-report/
+
+# 端末ごとの import 行(CLAUDE.md §0 を参照)
+CLAUDE.local.md
+
+# Python
+__pycache__/
+*.pyc

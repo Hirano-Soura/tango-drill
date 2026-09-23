@@ -1,0 +1,26 @@
+# tango-drill
+
+英単語を**自分の単語帳**として登録し、4 択・カードで復習する Web アプリ(開発中)。
+授業での利用を想定し、サーバーを持たず、学習記録は利用者の端末の中だけに保存する方針。
+
+設計と進捗は [Docs/00_Index.md](Docs/00_Index.md) から辿れる。
+
+## 開発
+
+必要なもの: Node.js 20 以上、Python 3.10 以上。
+
+```bash
+npm install
+```
+
+```bash
+npm run check
+```
+
+挙動(`node --test`)と型(`tsc`)を検査し、結果を `Temp/tango-drill_check.txt` に書く。
+
+```bash
+python Tools/DocAudit/doc_audit.py
+```
+
+文書を検査し、結果を `Temp/tango-drill_doc_audit.txt` に書く。
