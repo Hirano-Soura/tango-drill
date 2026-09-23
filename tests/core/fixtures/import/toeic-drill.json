@@ -1,0 +1,13 @@
+{
+  "date": "2000-01-01",
+  "level": "600",
+  "theme": "見本(形だけを toeic-drill の単語データに合わせたもの)",
+  "words": [
+    {"en": "invoice", "pos": "名", "ja": "請求書", "ex": "Please find the invoice attached.", "exJa": "添付の請求書をご確認ください。", "note": "類義: bill"},
+    {"en": "declare", "pos": "動", "trans": "vt", "ja": "(税関で)申告する", "ex": "You must declare the items at customs.", "exJa": "税関でその品物を申告しなければならない。", "note": "名詞形 declaration"},
+    {"en": "secure", "pos": "形", "ja": "安全な", "ex": "Keep your password in a secure place.", "exJa": "パスワードは安全な場所に保管すること。", "note": ""}
+  ],
+  "phrases": [
+    {"en": "in possession of A", "pos": "形容詞句/副詞句", "ja": "A を所持して", "ex": "He was found in possession of the key.", "exJa": "彼は鍵を所持していた。", "note": ""}
+  ]
+}

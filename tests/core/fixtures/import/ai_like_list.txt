@@ -1,0 +1,11 @@
+承知しました。以下の形式で出力します。
+
+```
+見出し語 | 品詞 | 日本語の意味 | 英語の例文 | 例文の和訳 | 補足
+1. **allocate** | verb | 割り当てる | The manager allocated the budget to each team. | 部長は各チームに予算を割り当てた。 | allocate A to B
+2. reimburse ｜ 動 ｜ 払い戻す ｜ The company will reimburse your travel expenses. ｜ 会社が旅費を払い戻す。
+3. tentative	形	仮の	We have a tentative schedule.	仮の予定がある。
+- itinerary
+```
+
+ほかにも必要な語があればお知らせください。

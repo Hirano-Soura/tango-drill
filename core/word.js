@@ -2,7 +2,8 @@
 // 出自: toeic-drill の 単語ドリル.html(normPos / keyOf / posParts / jaSenses / sensesOverlap)。
 
 /**
- * 1 語のデータ。項目名は toeic-drill の単語データと同じ。
+ * 1 語のデータ。項目名は toeic-drill の単語データを引き継ぎ、tags と exSrc を足した。
+ * 各項目の規則は Docs/20_ImportFormat.md §2。
  * @typedef {object} Word
  * @property {string} en 見出し語
  * @property {string} [pos] 品詞("名" "動" "形" … 複数は "動/名"、句は "動詞句" 等)
@@ -12,6 +13,8 @@
  * @property {string} [exJa] 例文の和訳
  * @property {string} [note] 補足
  * @property {string} [kind] 句表現なら "phrase"
+ * @property {string[]} [tags] 利用者が付ける束ね("第3週" など)
+ * @property {'self' | 'ai' | 'set'} [exSrc] 例文の出どころ(自作 / AI 生成 / 教材セット)
  */
 
 /** 括弧書きの補足(全角・半角)を落とす */

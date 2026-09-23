@@ -1,0 +1,8 @@
+Sure! Here are the words:
+
+| Headword | POS | Meaning | Example | Translation | Note |
+|---|---|---|---|---|---|
+| allocate | 動 | 割り当てる | The manager allocated the budget. | 部長が予算を割り当てた。 | |
+| reimburse | 動 | 払い戻す | We will reimburse you. | 払い戻します。 | |
+
+Let me know if you need more.

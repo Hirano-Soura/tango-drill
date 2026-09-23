@@ -38,7 +38,7 @@ flowchart TB
     D --- E[設定]
   end
   subgraph CORE["core/ 純粋ロジック層(ブラウザ非依存)"]
-    P[取り込み形式の解析と検証]
+    P[取り込み形式の解析と確認表]
     Q[誤答の選定]
     R[復習ミックスの出題順]
     S[記録の集計]
@@ -60,13 +60,13 @@ flowchart TB
 
 | 資産 | 出自(`単語ドリル.html`) | 移植先 |
 | --- | --- | --- |
-| 語の同一性 `見出し語 + 品詞` | `keyOf()` `normPos()` | `core/word.js`(移植済み) |
-| 語義が重なる語を誤答にしない | `jaSenses()` `sensesOverlap()` | `core/word.js`(移植済み) |
-| 品詞の分解 | `posParts()` | `core/word.js`(移植済み) |
+| 語の同一性 `見出し語 + 品詞` | `keyOf()` `normPos()` | `core/word.js` |
+| 語義が重なる語を誤答にしない | `jaSenses()` `sensesOverlap()` | `core/word.js` |
+| 品詞の分解 | `posParts()` | `core/word.js` |
 | 2 段階クイズ(自己申告 → 選択) | `renderStage1()` `renderStage2()` | 画面層 |
 | 回数ベースの復習ミックス | `qAgo()` `qMiss()` `qFew()` | `core/`(T-3) |
 | 正誤の CSV 書き出し | `statsCsv()` | 提出用テキストの土台 |
-| データの項目名 `en` `pos` `trans` `ja` `ex` `exJa` `note` | 単語データ全体 | 取り込み形式にそのまま採用 |
+| データの項目名 `en` `pos` `trans` `ja` `ex` `exJa` `note` | 単語データ全体 | 取り込み形式に引き継いだ。句表現の印 `kind` も引き継ぎ、`tags` `exSrc` を足した([20_ImportFormat.md](20_ImportFormat.md) §2) |
 
 ## 5. 検証
 

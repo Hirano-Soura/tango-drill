@@ -1,0 +1,11 @@
+{
+  "format": "tango-drill/v1",
+  "words": [
+    { "en": "allocate", "pos": "動", "ja": "割り当てる" },
+    { "pos": "動", "ja": "見出し語が無い" },
+    { "en": "割り当てる", "pos": "動" },
+    "allocate",
+    { "en": "   " },
+    { "en": "reimburse", "trans": "transitive", "kind": "idiom", "exSrc": "book", "tags": "第3週", "star": true, "ja": 3 }
+  ]
+}

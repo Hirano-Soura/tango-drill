@@ -33,6 +33,10 @@ BOX_CHARS = re.compile("[\u2500-\u257f]")  # box drawing (UD-12)
 ABS_PATH = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:\\|(?<![\w.])/[a-z]/[A-Za-z]")  # D:\  or  /c/Users (UD-8)
 DATED = re.compile(r"(19|20)\d{2}-?\d{2}-?\d{2}")
 MD_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+# Invisible characters that a tool may write in place of a backslash-u escape (Docs/52_Pitfalls.md P-3).
+# Built with chr() so this file never holds them literally.
+INVISIBLE = {chr(c) for c in (0xFEFF, 0x200B, 0x200C, 0x200D, 0x2060, 0x2028, 0x2029)}
+TEXT_SUFFIXES = {".js", ".mjs", ".ts", ".md", ".json", ".txt", ".py", ".yml", ".yaml", ".html", ".css"}
 BROWSER_API = re.compile(
     r"\b(window|document|indexedDB|localStorage|sessionStorage|navigator|fetch|XMLHttpRequest|sendBeacon)\b"
 )
@@ -169,10 +173,24 @@ class Audit:
                 if m:
                     self.add("FAIL", "INV-6 core purity", f"{self.rel(p)}:{i} uses '{m.group(1)}'")
 
+    def check_invisible_chars(self) -> None:  # P-3
+        files = [p for p in self.files() if p.suffix in TEXT_SUFFIXES]
+        self.seen["P-3 invisible chars"] = len(files)
+        for p in files:
+            try:
+                text = p.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                self.add("FAIL", "P-3 invisible chars", f"{self.rel(p)}: not UTF-8")
+                continue
+            for i, line in enumerate(text.split("\n"), 1):
+                bad = [ch for ch in line if ch in INVISIBLE or (ord(ch) < 32 and ch not in "\t\r")]
+                if bad:
+                    self.add("FAIL", "P-3 invisible chars", f"{self.rel(p)}:{i} U+{ord(bad[0]):04X}")
+
     CHECKS = [
         "check_index_orphans", "check_links", "check_dated_names", "check_progress_symbols",
         "check_completion_reports", "check_strikethrough", "check_abs_paths", "check_competing_rules",
-        "check_pseudo_diagrams", "check_core_purity",
+        "check_pseudo_diagrams", "check_core_purity", "check_invisible_chars",
     ]
 
     def run(self) -> "Audit":
@@ -228,6 +246,7 @@ def build_fixture(root: Path, broken: bool) -> None:
     (root / "Docs" / "Phase1_Complete.md").write_text("x\n", encoding="utf-8")                  # UD-4 (+UD-1)
     (root / ".cursorrules").write_text("x\n", encoding="utf-8")                                 # UD-9
     (root / "core" / "b.js").write_text("export const y = localStorage;\n", encoding="utf-8")   # INV-6
+    (root / "core" / "c.js").write_text("export const z = /^" + chr(0xFEFF) + "/;\n", encoding="utf-8")  # P-3
 
 
 def self_test() -> int:
@@ -248,7 +267,8 @@ def self_test() -> int:
     fired = {c for _, c, _ in broken.findings}
     expected = sorted({"UD-1 index", "links", "UD-2 dated names", "UD-3 progress symbols",
                        "UD-4 completion reports", "UD-6 strikethrough", "UD-8 absolute paths",
-                       "UD-9 competing rules", "UD-12 pseudo diagrams", "INV-6 core purity"})
+                       "UD-9 competing rules", "UD-12 pseudo diagrams", "INV-6 core purity",
+                       "P-3 invisible chars"})
     for c in expected:
         if c in fired:
             lines.append(f"[PASS] detects {c}")

@@ -1,0 +1,13 @@
+以下が JSON です。
+
+```json
+{
+  "format": "tango-drill/v1",
+  "words": [
+    { "en": "allocate", "pos": "動", "ja": "割り当てる" },
+    { "en": "reimburse", "pos": "動", "ja": "払い戻す" }
+  ]
+}
+```
+
+ご確認ください。

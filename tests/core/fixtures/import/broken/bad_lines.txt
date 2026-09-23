@@ -1,0 +1,4 @@
+allocate | 動 | 割り当てる
+割り当てる | 動 | allocate
+| | 動 | 見出し語が空 |
+reimburse | 動 | 払い戻す | We will reimburse you. | 払い戻します。 | 補足 | 7 個目の項目

@@ -1,0 +1,5 @@
+allocate | 動 | 割り当てる | The manager allocated the budget to each team. | 部長は各チームに予算を割り当てた。 | allocate A to B の形で使う
+tentative | 形 | 仮の | We have a tentative schedule for the launch. | 発売の仮の予定がある。
+reimburse | 動 | 払い戻す
+itinerary
+on behalf of A | 前置詞句 | A を代表して | I am writing on behalf of the sales team. | 営業チームを代表して書いています。
