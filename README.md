@@ -24,3 +24,17 @@ python Tools/DocAudit/doc_audit.py
 ```
 
 文書を検査し、結果を `Temp/tango-drill_doc_audit.txt` に書く。
+
+## 手元で動かす
+
+ビルド工程は無い。静的サーバーを立てて `http://127.0.0.1:8765/` を開く。
+
+```bash
+node Tools/Dev/serve.mjs
+```
+
+画面の通し確認(Playwright。端末に入っている Edge を使う)は次のとおり。結果は `Temp/tango-drill_e2e.json` に書く。
+
+```bash
+npm run e2e
+```

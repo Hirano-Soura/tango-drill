@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>単語ドリル</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1f2430;--sub:#6b7280;--accent:#2563eb;--ok:#16a34a;--ng:#dc2626;--line:#e5e7eb;--star:#f59e0b;
+    --choice:#fafafa;--yesbg:#eff6ff;--yesbd:#93c5fd;--yesfg:#1d4ed8;--nobg:#fef2f2;--nobd:#fca5a5;--nofg:#b91c1c;
+    --okbg:#dcfce7;--ngbg:#fee2e2;--warnbg:#fffbeb;--warnbd:#fcd34d;--warnfg:#b45309;--phfg:#5b21b6;--phbg:#ede9fe;--phbd:#c4b5fd;--th:#eef2ff;--onaccent:#fff}
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#111318;--card:#1b1e25;--ink:#e5e7eb;--sub:#9ca3af;--accent:#60a5fa;--ok:#4ade80;--ng:#f87171;--line:#2d323c;--star:#fbbf24;
+      --choice:#20242c;--yesbg:#172554;--yesbd:#1d4ed8;--yesfg:#bfdbfe;--nobg:#3b1212;--nobd:#b91c1c;--nofg:#fecaca;
+      --okbg:#14532d;--ngbg:#4c1d1d;--warnbg:#2b2110;--warnbd:#92400e;--warnfg:#fcd34d;--phfg:#c4b5fd;--phbg:#2e1065;--phbd:#6d28d9;--th:#1e2433;--onaccent:#0b1220}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:5}
+  header h1{margin:0;font-size:17px}
+  nav{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:5px 14px;cursor:pointer;font-size:14px;font-family:inherit}
+  nav button.active{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+  main{max-width:760px;margin:0 auto;padding:16px 16px 96px}
+  h2{font-size:16px;margin:0 0 10px}
+  button{font-family:inherit;font-size:14px;color:var(--ink)}
+  input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;max-width:100%;min-width:0}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
+  .wordform .f{margin:0 0 10px}
+  .wordform label{display:block;font-size:13px;color:var(--sub)}
+  .wordform input,.wordform textarea{display:block;width:100%;margin-top:3px}
+  .wordform select{display:block;margin-top:3px}
+  .wordform .two{display:grid;grid-template-columns:1fr auto;gap:10px}
+  .check{display:flex;gap:8px;align-items:center}
+  .hint{font-size:12.5px;color:var(--sub);margin:4px 0 10px}
+  .msg{min-height:1.5em;margin:10px 0 0;font-size:14px}
+  .msg.err{color:var(--ng)}
+  .rowbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .rowbtns.left{justify-content:flex-start}
+  .rowbtns button,.toolrow button,.ops button,.empty button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 16px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--onaccent)}
+  .toolrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .toolrow button.on{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+  .toolrow input[type=search]{flex:1 1 200px}
+  .tablewrap{overflow-x:auto;border-radius:10px}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:14px}
+  th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th);font-size:13px;white-space:nowrap}
+  .words{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .word{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--line);align-items:start}
+  .word:last-child{border-bottom:none}
+  .word .body{min-width:0;overflow-wrap:anywhere}
+  .word .ja{margin:2px 0}
+  .ops{display:flex;flex-direction:column;gap:6px}
+  .ops button{padding:4px 12px;font-size:13px}
+  .en{font-weight:600}
+  .en.ph{color:var(--phfg)}
+  .ex{color:var(--sub);font-size:13px}
+  .meta{color:var(--sub);font-size:13px}
+  .empty{color:var(--sub);text-align:center;margin-top:48px}
+  .star{border:none;background:none;cursor:pointer;color:#9ca3af;font-size:18px;padding:0 2px;line-height:1}
+  .star.on{color:var(--star)}
+  .kind{display:inline-block;font-size:11px;border-radius:10px;padding:0 7px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
+  .kind.ph{background:var(--phbg);border-color:var(--phbd);color:var(--phfg)}
+  .tr{display:inline-block;font-size:10.5px;border-radius:8px;padding:0 6px;border:1px solid var(--line);color:var(--sub)}
+  .q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:10px 0}
+  .q .stem{font-size:26px;font-weight:700;margin-bottom:4px;overflow-wrap:anywhere}
+  .q .stem.ph{font-size:21px}
+  .q .pos{color:var(--sub);font-size:13px;margin-bottom:12px}
+  .q.card{cursor:pointer;text-align:center;min-height:200px}
+  .q.card .back{font-size:21px;font-weight:600;color:var(--accent);margin-top:10px}
+  .choices{display:grid;gap:8px}
+  .choices.two{grid-template-columns:1fr 1fr}
+  .choice{text-align:left;border:1px solid var(--line);background:var(--choice);border-radius:8px;padding:11px 14px;cursor:pointer;font-size:15px}
+  .choice:disabled{cursor:default;opacity:1}
+  .choice.correct{background:var(--okbg);border-color:var(--ok);font-weight:600}
+  .choice.wrong{background:var(--ngbg);border-color:var(--ng)}
+  .choice.self{text-align:center;font-size:16px;font-weight:600;padding:14px 10px}
+  .choice.self.yes{background:var(--yesbg);border-color:var(--yesbd);color:var(--yesfg)}
+  .choice.self.no{background:var(--nobg);border-color:var(--nobd);color:var(--nofg)}
+  .choice.none{color:var(--sub);border-style:dashed}
+  .stagenote{font-size:12px;color:var(--sub);margin:10px 0 0}
+  .stagebanner{font-size:12.5px;background:var(--warnbg);border:1px solid var(--warnbd);color:var(--warnfg);border-radius:8px;padding:7px 11px;margin:0 0 10px}
+  .fb{margin-top:12px;font-size:14px}
+  .ok{color:var(--ok)} .ng{color:var(--ng)}
+  .sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:0 0 14px}
+  .sumbox{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .sumbox b{display:block;font-size:19px;line-height:1.35}
+  .sumbox span{font-size:11.5px;color:var(--sub)}
+  .sumbox.warn b,.mb{color:var(--ng)}
+  .hist{white-space:nowrap;font-size:13px;letter-spacing:1px}
+  .hist i{font-style:normal}
+  .hist .o{color:var(--ok)} .hist .x{color:var(--ng)} .hist .u{opacity:.45}
+  #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--bg);
+    border-radius:12px;padding:10px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:10}
+  #toast[hidden]{display:none}
+  #toast button{background:none;border:1px solid currentColor;color:inherit;border-radius:8px;padding:4px 12px;cursor:pointer;white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>単語ドリル</h1>
+  <nav id="tabs" role="tablist" aria-label="画面"></nav>
+</header>
+<main id="content"><p class="empty">読み込み中…</p></main>
+<div id="toast" role="status" hidden></div>
+<noscript><p class="empty">このアプリは JavaScript を使います。ブラウザの設定で JavaScript を有効にしてください。</p></noscript>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>

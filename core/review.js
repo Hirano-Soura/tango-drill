@@ -77,6 +77,33 @@ export function recordAnswer(records, key, ok, self) {
 }
 
 /**
+ * 2 段階クイズの第 1 段階で積む記録。「わからない」はこの時点で不正解が確定するので、ここで積む
+ * (第 2 段階は正解を見るための表示で、記録しない)。「わかる」は第 2 段階で積むので null。
+ * 判定表は Docs/23_Screens.md §4。
+ * @param {boolean} self 「わかる」と申告したか
+ * @returns {{ ok: boolean, self: boolean } | null}
+ */
+export function stage1Record(self) {
+  return self ? null : { ok: false, self: false };
+}
+
+/**
+ * 2 段階クイズの第 2 段階の判定と、そこで積む記録。
+ * - correct: 正答として数えるか(「わかる」と申告して正解を選んだときだけ)
+ * - record: 第 2 段階で積む記録。「わからない」と申告していれば第 1 段階で積み済みなので null
+ * - verdict: 画面に出す判定(correct / misbelief: わかると申告して外した / notListed: 思い浮かべた訳が選択肢に無い /
+ *   unknown: わからないと申告した)
+ * @param {boolean} self 第 1 段階で「わかる」と申告したか
+ * @param {'correct' | 'wrong' | 'notListed'} pick 第 2 段階で選んだもの
+ * @returns {{ correct: boolean, record: { ok: boolean, self: boolean } | null, verdict: 'correct' | 'misbelief' | 'notListed' | 'unknown' }}
+ */
+export function stage2Judge(self, pick) {
+  if (!self) return { correct: false, record: null, verdict: 'unknown' };
+  const ok = pick === 'correct';
+  return { correct: ok, record: { ok, self: true }, verdict: ok ? 'correct' : pick === 'notListed' ? 'notListed' : 'misbelief' };
+}
+
+/**
  * 語の総回答回数(記録の件数)。
  * @param {Records} records
  * @param {string} key
@@ -137,7 +164,7 @@ export function sessionAgo(sessions, today, n) {
 }
 
 /**
- * 基準の回の日付。回が無ければ null。画面はこれが今日なら「今日」、違えば「直近(M/D)」と出す。
+ * 基準の回の日付。回が無ければ null。画面はこれが今日なら「今日」、違えば「直近(YYYY-MM-DD)」と出す。
  * @param {readonly Session[]} sessions
  * @param {string} today
  * @returns {string | null}

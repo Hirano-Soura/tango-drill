@@ -9,8 +9,8 @@
 | `tests/core/distractors.test.js` | §1 の表の全段、§2 の条件と除外規則、INV-5 の陽性対照 |
 | `core/builtinVocab.js` | 内蔵語彙(§4)。`Tools/Builtin/make_builtin.mjs` が生成する。手で直さず、生成元を直して作り直す |
 | `tests/core/builtinVocab.test.js` | 内蔵語彙の語数と項目、実データで 1 語の単語帳から 4 択が作れること |
-| `core/review.js` | 復習ミックス(`reviewMix`)・正誤の記録(`recordAnswer`)・集計(`allStats` `sortStats` `statsCsv`) |
-| `tests/core/review.test.js` | §5・§6 の規則と、出題集合の INV-5 |
+| `core/review.js` | 復習ミックス(`reviewMix`)・正誤の記録(`recordAnswer`)・2 段階クイズの判定(`stage1Record` `stage2Judge`)・集計(`allStats` `sortStats` `statsCsv`) |
+| `tests/core/review.test.js` | §5・§6 の規則(判定表と 1 問 1 件を含む)と、出題集合の INV-5 |
 | `tests/core/review.compare.test.js` | 既存アプリと同じ入力・同じ乱数で、出題集合・出題順・集計・CSV・並べ替え・記録の積み方が一致すること |
 | `tests/core/fixtures/legacy/toeicDrillReview.js` | 比較の相手。`Tools/Legacy/extract_review.mjs` が既存アプリの HTML から該当行をそのまま抜き出して作る |
 
@@ -109,6 +109,14 @@
 
 - 正誤(`hist`: 1 = 正解 / 0 = 誤答)と第 1 段階の自己申告(`self`: 1 = わかる / 0 = わからない)を、
   語の鍵ごとに直近 10 件まで持つ。2 つは必ず同時に積む
+- 2 段階クイズ(第 1 段階で自己申告、第 2 段階で 4 択 +「思い浮かべた訳が選択肢に無い」)の判定と記録は次の表のとおり
+  (`stage1Record` / `stage2Judge`。既存アプリと同じ)。**1 問で記録はちょうど 1 件**
+
+| 第 1 段階 | 第 2 段階 | 判定 | 記録 |
+| --- | --- | --- | --- |
+| わかる | 正解を選ぶ | 正解(正答として数える) | 第 2 段階で 正解・わかる |
+| わかる | 誤答か「思い浮かべた訳が選択肢に無い」を選ぶ | 不正解(思い違い)。画面は、誤答なら「思い違い」、選択肢に無いならそのことを分けて出す | 第 2 段階で 不正解・わかる |
+| わからない | 何を選んでも | 不正解 | 第 1 段階で 不正解・わからない。第 2 段階は記録しない |
 - 自己申告を導入する前の記録には `self` が無いので、対にするときは末尾から揃える
 - 思い違い = 「わかる」と申告して外した回数。思い違い率 = 思い違い / 「わかる」の申告回数
 - 正誤の CSV は既存アプリと同じ列で、改行は CRLF。Excel 向けの BOM は、ファイルに書き出す画面側で付ける

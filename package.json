@@ -5,9 +5,11 @@
   "scripts": {
     "test": "node --test",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.app.json",
-    "check": "node Tools/check.mjs"
+    "check": "node Tools/check.mjs",
+    "e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.2",
     "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2"

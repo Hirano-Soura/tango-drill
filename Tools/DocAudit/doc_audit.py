@@ -58,7 +58,10 @@ NOT_SHIPPED = {"tests", "Tools", "Docs", ".github", ".claude"}
 SHIPPED_SUFFIXES = {".js", ".mjs", ".html"}
 # INV-1 allow list: (path relative to the root, SEND_API name) -> reason. Add a row only with a reason
 # that shows no word or record leaves the device (e.g. a service worker fetching its own files).
-INV1_ALLOW: dict[tuple[str, str], str] = {}
+INV1_ALLOW: dict[tuple[str, str], str] = {
+    ("playwright.config.js", "external URL"):
+        "screen-test config; the app never loads it, and the URL is the local test server on 127.0.0.1",
+}
 
 
 class Audit:

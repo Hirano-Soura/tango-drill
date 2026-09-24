@@ -161,7 +161,11 @@ export function editWord(book, key, input) {
   const old = book.words[i];
   /** @type {Record<string, unknown>} */
   const item = clean(input);
+  /** @type {string[]} */
+  const notes = [];
   if (!item.ex) {
+    // 例文を消したときの和訳は黙って消す。例文の無いまま和訳を書き足したときは知らせる
+    if (item.exJa && item.exJa !== old.exJa) notes.push('例文の無い和訳(exJa)は無視しました');
     delete item.exJa;
   } else {
     item.exSrc = item.ex === old.ex && old.exSrc ? old.exSrc : 'self';
@@ -176,7 +180,7 @@ export function editWord(book, key, input) {
   }
   const words = book.words.slice();
   words[i] = next;
-  return { ok: true, book: moveKeys({ ...book, words }, [{ from: key, to }]), key: to, warnings: row.warnings };
+  return { ok: true, book: moveKeys({ ...book, words }, [{ from: key, to }]), key: to, warnings: [...notes, ...row.warnings] };
 }
 
 /**

@@ -52,11 +52,23 @@ def check_tsc() -> None:
 
 
 def check_playwright() -> None:
-    for pkg in ("@playwright/test", "playwright"):
-        if (ROOT / "node_modules" / pkg).exists():
-            add("PASS", "playwright", f"{pkg} installed")
-            return
-    add("WARN", "playwright", "not installed (needed from task T-5, screen tests)")
+    """Screen tests (npm run e2e) need @playwright/test and the browser named by PW_CHANNEL (default: msedge)."""
+    if not (ROOT / "node_modules" / "@playwright" / "test").exists():
+        add("WARN", "playwright", "@playwright/test not installed (run npm install; needed for npm run e2e)")
+        return
+    channel = os.environ.get("PW_CHANNEL", "msedge")
+    if channel != "msedge":
+        add("PASS", "playwright", f"@playwright/test installed, PW_CHANNEL={channel} (not checked here)")
+        return
+    candidates = [
+        Path(os.environ.get(v, "")) / "Microsoft" / "Edge" / "Application" / "msedge.exe"
+        for v in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA") if os.environ.get(v)
+    ]
+    found = next((str(p) for p in candidates if p.exists()), None) or shutil.which("msedge") or shutil.which("microsoft-edge")
+    if found:
+        add("PASS", "playwright", f"@playwright/test installed, Edge at {found}")
+    else:
+        add("WARN", "playwright", "Edge not found: install it, or set PW_CHANNEL (e.g. chrome) for npm run e2e")
 
 
 def check_claude_local() -> None:

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { IDBFactory } from 'fake-indexeddb';
-import { openStorage } from '../../app/storage.js';
+import { openStorage, DEFAULT_SETTINGS } from '../../app/storage.js';
 import { backupText, parseBackup, readBackup, toBackup, CURRENT_BACKUP_FORMAT } from '../../core/backup.js';
 import { countBook, emptyBook } from '../../core/book.js';
 
@@ -148,6 +148,29 @@ test('保存してある中身が読めなければ、空の単語帳として�
   await assert.rejects(t.load(TODAY), /保存してある単語帳が読めません.*新しい/);
   t.close();
   assert.deepEqual(await rawGet(factory, 'book'), broken);
+});
+
+test('設定: 何も保存していなければ既定値。保存した値を開き直しても読め、単語帳の保存・復元では変わらない', async () => {
+  const factory = new IDBFactory();
+  const s = await open(factory);
+  assert.deepEqual(await s.loadSettings(), DEFAULT_SETTINGS);
+  await s.saveSettings({ useBuiltin: false });
+  await s.save(sample());
+  await s.restore(other());
+  s.close();
+  const t = await open(factory);
+  assert.deepEqual(await t.loadSettings(), { useBuiltin: false });
+  t.close();
+});
+
+test('設定: 保存してある設定に無い項目・型の違う項目は既定値で補う', async () => {
+  const factory = new IDBFactory();
+  const s = await open(factory);
+  s.close();
+  await rawPut(factory, 'settings', { useBuiltin: 'no', old: 1 });
+  const t = await open(factory);
+  assert.deepEqual(await t.loadSettings(), DEFAULT_SETTINGS);
+  t.close();
 });
 
 // --- 保存層を通さずに中身を見る・書く(検査用) -----------------------------------------------

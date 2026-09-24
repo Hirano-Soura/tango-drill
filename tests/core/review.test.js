@@ -5,7 +5,7 @@ import { notOwnQuestions } from '../../core/distractors.js';
 import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
 import {
   REVIEW, GROUP_ORDER, reviewMix, recordAnswer, emptyRecords, missOften, answerPairs, statOf,
-  sessionAgo, baseDate, baseIndex, statsCsv, CSV_COLUMNS,
+  sessionAgo, baseDate, baseIndex, statsCsv, CSV_COLUMNS, stage1Record, stage2Judge,
 } from '../../core/review.js';
 
 /** @typedef {import('../../core/word.js').Word} Word */
@@ -141,4 +141,26 @@ test('statsCsv: 列は既存アプリと同じ。区切り・引用符を含む�
   const [head, row] = csv.split('\r\n');
   assert.equal(head, CSV_COLUMNS.join(','));
   assert.equal(row, '"deal with A, B",動詞句,,"「A」に""対処""する",phrase,"deal with A, B|動詞句",2026-07-01,3,2,1,0.667,1,2,0.5,0,1 0 1,- 1 1,0,0');
+});
+
+// --- 2 段階クイズの判定(Docs/23_Screens.md §4) ------------------------------------------------
+
+test('2 段階クイズ: 判定表の 3 行(わかる+正解 / わかる+外す / わからない)どおりに記録し、正答を数える', () => {
+  assert.equal(stage1Record(true), null, 'わかるは第 1 段階では積まない');
+  assert.deepEqual(stage1Record(false), { ok: false, self: false });
+  assert.deepEqual(stage2Judge(true, 'correct'), { correct: true, record: { ok: true, self: true }, verdict: 'correct' });
+  assert.deepEqual(stage2Judge(true, 'wrong'), { correct: false, record: { ok: false, self: true }, verdict: 'misbelief' });
+  assert.deepEqual(stage2Judge(true, 'notListed'), { correct: false, record: { ok: false, self: true }, verdict: 'notListed' });
+  for (const pick of /** @type {const} */ (['correct', 'wrong', 'notListed'])) {
+    assert.deepEqual(stage2Judge(false, pick), { correct: false, record: null, verdict: 'unknown' }, 'わからないのあとは記録しない');
+  }
+});
+
+test('2 段階クイズ: 1 問でちょうど 1 件の記録になる(第 1 段階と第 2 段階の記録が重ならない)', () => {
+  for (const self of [true, false]) {
+    for (const pick of /** @type {const} */ (['correct', 'wrong', 'notListed'])) {
+      const n = (stage1Record(self) ? 1 : 0) + (stage2Judge(self, pick).record ? 1 : 0);
+      assert.equal(n, 1, `self=${self} pick=${pick}`);
+    }
+  }
 });

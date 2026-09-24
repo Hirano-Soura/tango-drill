@@ -15,6 +15,17 @@ const STORE = 'kv';
 const BOOK = 'book';
 /** 復元(C1)の直前の単語帳。次の復元まで残し、元に戻すと消す。値 null は「復元の直前に何も保存されていなかった」 */
 const UNDO = 'undo';
+/** 設定。単語帳とは別に置き、バックアップには入れない(端末ごとの好み) */
+const SETTINGS = 'settings';
+
+/**
+ * 設定。項目を足すときは DEFAULT_SETTINGS にも足す(保存してある古い設定に無い項目は既定値で補う)。
+ * @typedef {object} Settings
+ * @property {boolean} useBuiltin 4 択の誤答に内蔵語彙を使う(Docs/21_Quiz.md §1)
+ */
+
+/** @type {Readonly<Settings>} */
+export const DEFAULT_SETTINGS = Object.freeze({ useBuiltin: true });
 
 /**
  * @typedef {object} StorageOptions
@@ -35,6 +46,8 @@ const UNDO = 'undo';
  * @property {(book: Book) => Promise<void>} restore 今の単語帳を退避してから、渡した単語帳で置き換える(C1)
  * @property {() => Promise<boolean>} canUndo 復元の直前の単語帳が退避してあるか
  * @property {() => Promise<void>} undoRestore 退避した単語帳に戻し、退避を消す。復元のあとの変更は消える
+ * @property {() => Promise<Settings>} loadSettings 保存してある設定。無い項目・型の違う項目は既定値で補う
+ * @property {(settings: Settings) => Promise<void>} saveSettings
  * @property {() => void} close
  */
 
@@ -98,6 +111,25 @@ export async function openStorage(factory, opts = {}) {
         if (missing) throw new Error('元に戻す単語帳がありません');
         throw e;
       }
+    },
+
+    async loadSettings() {
+      const raw = await get(db, SETTINGS);
+      /** @type {Settings} */
+      const out = { ...DEFAULT_SETTINGS };
+      if (typeof raw === 'object' && raw !== null) {
+        for (const k of /** @type {(keyof Settings)[]} */ (Object.keys(DEFAULT_SETTINGS))) {
+          const v = /** @type {Record<string, unknown>} */ (raw)[k];
+          if (typeof v === typeof DEFAULT_SETTINGS[k]) out[k] = /** @type {any} */ (v);
+        }
+      }
+      return out;
+    },
+
+    async saveSettings(settings) {
+      await write(db, (s) => {
+        s.put({ ...settings }, SETTINGS);
+      });
     },
 
     close() {

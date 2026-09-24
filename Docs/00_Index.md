@@ -9,6 +9,7 @@
 | 20 | [20_ImportFormat.md](20_ImportFormat.md) | 取り込み形式の版・項目・寛容な解析・確認表の規則(INV-2 / INV-3) |
 | 21 | [21_Quiz.md](21_Quiz.md) | 出題: 語数の段と 4 択の誤答の選び方(INV-5)・復習ミックス・記録の集計 |
 | 22 | [22_Storage.md](22_Storage.md) | 保存層(IndexedDB)・バックアップ形式(INV-3)・復元と元に戻す |
+| 23 | [23_Screens.md](23_Screens.md) | 画面: 5 つのタブ・追加と編集と削除・元に戻す・2 段階クイズ・画面の確かめ方 |
 | 50 | [50_Tasks.md](50_Tasks.md) | **進捗の唯一の真実**(UD-3)。タスクと完了条件、未決定事項 |
 | 52 | [52_Pitfalls.md](52_Pitfalls.md) | 再発しうる罠(UD-4 の「恒久的な知見」の行き先) |
 

@@ -99,6 +99,7 @@ flowchart LR
 | オブジェクトストア | `kv`(キーは外から与える) |
 | キー `book` | 今の単語帳。**バックアップと同じ形**(`toBackup`) |
 | キー `undo` | 復元の直前の単語帳(同じ形)。直前に何も保存されていなければ `null` |
+| キー `settings` | 端末ごとの設定(`loadSettings` / `saveSettings`)。バックアップには入れない。無い項目・型の違う項目は既定値(`DEFAULT_SETTINGS`)で補う |
 
 - **保存した中身もバックアップの読み手(`readBackup`)で読む。** 保存の形とバックアップの形を 1 つにして、
   保存した中身も INV-3 の対象にする(アプリを更新しても、端末に残った単語帳を読める)
@@ -120,7 +121,7 @@ flowchart LR
 ### 実際のブラウザでの往復の手順
 
 1. `node Tools/Dev/serve.mjs` で静的サーバーを立てる(127.0.0.1:8765。ビルド工程は無い)。
-   画面がまだ無いので `/` は `not found` と出るが、そのページのコンソールで行う。
+   `/` ではアプリが開く。手順はそのページのコンソールで行う(アプリと同じ IndexedDB を使うので、そのオリジンの単語帳は書き換わる)。
    `localhost` で開けない環境では、`node Tools/Dev/serve.mjs 8766` でもう 1 つ立て、ポートの違いで別オリジンにする
 2. `http://localhost:8765/` を開き、開発者ツールのコンソールで `/app/storage.js` と `/core/` の各モジュールを動的 import する。
    取り込み(`importIntoBook`)で語を足し、`recordAnswer` で記録を付けて `save` する。開き直して `load` し、`backupText` で書き出す

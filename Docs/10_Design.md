@@ -73,7 +73,7 @@ flowchart TB
 | 語義が重なる語を誤答にしない | `jaSenses()` `sensesOverlap()` | `core/word.js` |
 | 品詞の分解 | `posParts()` | `core/word.js` |
 | 4 択の誤答の選定 | `quizOptions()` | `core/distractors.js`。内蔵語彙による補完と品詞の一致を足した([21_Quiz.md](21_Quiz.md) §2) |
-| 2 段階クイズ(自己申告 → 選択) | `renderStage1()` `renderStage2()` | 画面層 |
+| 2 段階クイズ(自己申告 → 選択) | `renderStage1()` `renderStage2()` | 判定と記録は `core/review.js`(`stage1Record` `stage2Judge`。[21_Quiz.md](21_Quiz.md) §6)、表示は `app/tabs/study.js` |
 | 回数ベースの復習ミックス | `qAgo()` `qMiss()` `qFew()` `buildQuiz()` | `core/review.js`([21_Quiz.md](21_Quiz.md) §5) |
 | 正誤の記録と集計 | `recordAnswer()` `answerPairs()` `statOf()` | `core/review.js`([21_Quiz.md](21_Quiz.md) §6) |
 | 正誤の CSV 書き出し | `statsCsv()` | `core/review.js`。提出用テキストの土台 |

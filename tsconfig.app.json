@@ -3,5 +3,5 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["app/**/*.js", "tests/app/**/*.js"]
+  "include": ["app/**/*.js", "tests/app/**/*.js", "tests/e2e/**/*.js"]
 }

@@ -130,7 +130,15 @@ test('T-5: 編集で例文を消すと、和訳と出どころも消える', () 
   assert.ok(r.ok);
   if (!r.ok) return;
   assert.deepEqual(r.book.words[0], { en: 'allocate', pos: '動', ja: '割り当てる', tags: ['第3週'] });
-  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.warnings, [], '例文を消したときの和訳は黙って消す');
+});
+
+test('編集で例文の無いまま和訳を書き足すと、和訳は入れずに知らせる', () => {
+  const r = editWord(withEx(), 'secure|形', { en: 'secure', pos: '形', ja: '安全な', ex: '', exJa: '訳だけ' });
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.deepEqual(r.book.words[1], { en: 'secure', pos: '形', ja: '安全な' });
+  assert.deepEqual(r.warnings, ['例文の無い和訳(exJa)は無視しました']);
 });
 
 test('編集で例文を書き換えると出どころは自作になり、変えなければ元の出どころが残る', () => {
