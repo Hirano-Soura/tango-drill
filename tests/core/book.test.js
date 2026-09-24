@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyBook, moveKeys, countBook, duplicateKeys, sessionsOf, importIntoBook } from '../../core/book.js';
+import {
+  emptyBook, moveKeys, countBook, duplicateKeys, sessionsOf, importIntoBook, addOneWord, editWord, deleteWord, toggleStar,
+} from '../../core/book.js';
 import { parseImport } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
 import { reviewMix, recordAnswer } from '../../core/review.js';
@@ -86,6 +88,82 @@ test('T-4.1: 品詞の無い語に記録を付けてから品詞を埋める取�
   assert.deepEqual(r.book.records.self, { 'itinerary|名': [1, 1] });
   assert.deepEqual(r.book.added, { 'itinerary|名': '2026-09-01' });
   assert.deepEqual(r.book.starred, ['itinerary|名']);
+});
+
+// --- 画面からの操作(T-5) ---------------------------------------------------------------------
+
+/** @returns {Book} */
+const withEx = () => ({
+  words: [
+    { en: 'allocate', pos: '動', ja: '割り当てる', ex: 'They allocated funds.', exJa: '彼らは資金を割り当てた。', exSrc: 'ai', tags: ['第3週'] },
+    { en: 'secure', pos: '形', ja: '安全な' },
+  ],
+  added: { 'allocate|動': '2026-09-01', 'secure|形': '2026-09-02' },
+  records: { hist: { 'allocate|動': [1, 0], 'secure|形': [1] }, self: { 'allocate|動': [1, 1], 'secure|形': [1] } },
+  starred: ['allocate|動'],
+});
+
+test('addOneWord: 取り込みと同じ正規化を通して足し、今日の追加日を付ける。例文の出どころは自作', () => {
+  const r = addOneWord(withEx(), { en: ' budget ', pos: 'noun', ja: '予算', ex: 'We cut the budget.', exJa: '', note: '' }, '2026-09-24');
+  assert.ok(r.ok, r.ok ? '' : r.error);
+  if (!r.ok) return;
+  assert.equal(r.key, 'budget|名');
+  assert.deepEqual(r.book.words.at(-1), { en: 'budget', pos: '名', ja: '予算', ex: 'We cut the budget.', exSrc: 'self' });
+  assert.equal(r.book.added['budget|名'], '2026-09-24');
+});
+
+test('addOneWord: 既にある語に当たる入力は足さず、編集へ案内する(INV-4)', () => {
+  for (const input of [{ en: 'allocate', pos: '動' }, { en: 'secure' }, { en: 'allocate', pos: '動', ja: '配分する' }]) {
+    const r = addOneWord(withEx(), input, '2026-09-24');
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.error, /単語帳から編集/);
+  }
+  const bad = addOneWord(withEx(), { en: '予算' }, '2026-09-24');
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.match(bad.error, /英語ではありません/);
+  // 陽性対照: 同じ綴りでも品詞が違えば別の語として足せる
+  assert.equal(addOneWord(withEx(), { en: 'secure', pos: '動', ja: '確保する' }, '2026-09-24').ok, true);
+});
+
+test('T-5: 編集で例文を消すと、和訳と出どころも消える', () => {
+  const r = editWord(withEx(), 'allocate|動', { en: 'allocate', pos: '動', ja: '割り当てる', ex: '', exJa: '彼らは資金を割り当てた。', tags: ['第3週'] });
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.deepEqual(r.book.words[0], { en: 'allocate', pos: '動', ja: '割り当てる', tags: ['第3週'] });
+  assert.deepEqual(r.warnings, []);
+});
+
+test('編集で例文を書き換えると出どころは自作になり、変えなければ元の出どころが残る', () => {
+  const b = withEx();
+  const same = editWord(b, 'allocate|動', { en: 'allocate', pos: '動', ja: '配分する', ex: 'They allocated funds.', exJa: '訳を直した。' });
+  assert.ok(same.ok && same.book.words[0].exSrc === 'ai');
+  const changed = editWord(b, 'allocate|動', { en: 'allocate', pos: '動', ja: '割り当てる', ex: 'I allocate time.', exJa: '' });
+  assert.ok(changed.ok && changed.book.words[0].exSrc === 'self');
+});
+
+test('編集で鍵が変わると追加日・記録・印が付いて動き、既にある鍵には変えられない(INV-4)', () => {
+  const r = editWord(withEx(), 'allocate|動', { en: 'allot', pos: '動', ja: '割り当てる' });
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.equal(r.key, 'allot|動');
+  assert.deepEqual(r.book.records.hist['allot|動'], [1, 0]);
+  assert.equal(r.book.added['allot|動'], '2026-09-01');
+  assert.deepEqual(r.book.starred, ['allot|動']);
+  const clash = editWord(withEx(), 'allocate|動', { en: 'secure', pos: '形', ja: '安全な' });
+  assert.equal(clash.ok, false);
+  if (!clash.ok) assert.match(clash.error, /INV-4/);
+  assert.equal(editWord(withEx(), 'none|名', { en: 'none' }).ok, false);
+});
+
+test('削除は語・追加日・印を消し、記録は残す。印の付け外しは往復で元に戻る', () => {
+  const b = deleteWord(withEx(), 'allocate|動');
+  assert.deepEqual(b.words.map((w) => w.en), ['secure']);
+  assert.equal(b.added['allocate|動'], undefined);
+  assert.deepEqual(b.starred, []);
+  assert.deepEqual(b.records.hist['allocate|動'], [1, 0]);
+  const s = toggleStar(withEx(), 'secure|形');
+  assert.deepEqual(s.starred, ['allocate|動', 'secure|形']);
+  assert.deepEqual(toggleStar(s, 'secure|形').starred, ['allocate|動']);
 });
 
 /** @returns {Book} */

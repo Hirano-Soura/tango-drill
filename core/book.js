@@ -3,7 +3,8 @@
 
 import { keyOf } from './word.js';
 import { emptyRecords } from './review.js';
-import { applyImport } from './importPlan.js';
+import { applyImport, planImport, confirmPlan } from './importPlan.js';
+import { parseImport, readItem, CURRENT_JSON_FORMAT } from './importFormat.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./review.js').Records} Records */
@@ -100,6 +101,124 @@ export function importIntoBook(book, confirmedPlan, today) {
   const moved = moveKeys({ ...book, words: r.words }, r.rekeys);
   for (const k of r.addedKeys) moved.added[k] = today;
   return { book: moved, added: r.added, updated: r.updated };
+}
+
+/**
+ * 画面の入力欄から来る 1 語。空欄は空文字で来てよい(項目が無いのと同じに扱う)。
+ * @typedef {object} WordInput
+ * @property {string} en
+ * @property {string} [pos]
+ * @property {string} [trans]
+ * @property {string} [ja]
+ * @property {string} [ex]
+ * @property {string} [exJa]
+ * @property {string} [note]
+ * @property {string[]} [tags]
+ */
+
+/**
+ * @typedef {{ ok: true, book: Book, key: string, warnings: string[] } | { ok: false, error: string }} EditResult
+ */
+
+/**
+ * 追加画面で 1 語を足す。取り込みと同じ読み手・確認表を通す(INV-2・INV-4)。
+ * 手で入れた 1 語は入力欄そのものが確認に当たるので、確認表の行が「足す」のときだけ確定して保存する。
+ * 既にある語に当たる(空欄を埋める・同じ・当て先が決まらない)ときは足さずに、単語帳からの編集へ案内する。
+ * 例文があれば出どころは自作(self)にする。
+ * @param {Book} book
+ * @param {WordInput} input
+ * @param {string} today YYYY-MM-DD
+ * @returns {EditResult}
+ */
+export function addOneWord(book, input, today) {
+  const text = JSON.stringify({ format: CURRENT_JSON_FORMAT, words: [clean(input)] });
+  const plan = planImport(book.words, parseImport(text), { exSrc: 'self' });
+  const row = plan.rows[0];
+  if (plan.fatal !== undefined || !row) return { ok: false, error: plan.fatal ?? '入力が読めません' };
+  if (row.action === 'error') return { ok: false, error: row.message ?? '入力が読めません' };
+  if (row.action !== 'add' || !row.word) {
+    const at = row.target ?? row.candidates?.join(' / ') ?? '';
+    return { ok: false, error: `既に単語帳にある語(${at})に当たります。単語帳から編集してください` };
+  }
+  const r = importIntoBook(book, confirmPlan(plan), today);
+  return { ok: true, book: r.book, key: keyOf(row.word), warnings: row.warnings };
+}
+
+/**
+ * 単語帳の 1 語を書き換える。取り込みと同じ読み手で正規化する(品詞の別名・例文の無い和訳の扱いなど)。
+ * - 例文を消すと、和訳と出どころも消す(3 つは一組。Docs/20_ImportFormat.md §4)
+ * - 例文を書き換えると、出どころは自作(self)にする。変えなければ元の出どころを残す
+ * - 見出し語か品詞を変えて鍵が変わるときは、追加日・記録・印を新しい鍵へ移す。
+ *   新しい鍵の語が既にあれば書き換えない(INV-4)
+ * @param {Book} book
+ * @param {string} key 書き換える語の鍵
+ * @param {WordInput} input
+ * @returns {EditResult}
+ */
+export function editWord(book, key, input) {
+  const i = book.words.findIndex((w) => keyOf(w) === key);
+  if (i < 0) return { ok: false, error: `${key} は単語帳にありません` };
+  const old = book.words[i];
+  /** @type {Record<string, unknown>} */
+  const item = clean(input);
+  if (!item.ex) {
+    delete item.exJa;
+  } else {
+    item.exSrc = item.ex === old.ex && old.exSrc ? old.exSrc : 'self';
+  }
+  if (old.kind === 'phrase') item.kind = 'phrase';
+  const row = readItem(item, 1);
+  if (!row.word) return { ok: false, error: row.error ?? row.skipped ?? '入力が読めません' };
+  const next = row.word;
+  const to = keyOf(next);
+  if (to !== key && book.words.some((w) => keyOf(w) === to)) {
+    return { ok: false, error: `${to} は既に単語帳にあります(同じ見出し語と品詞の語は 1 つだけ。INV-4)` };
+  }
+  const words = book.words.slice();
+  words[i] = next;
+  return { ok: true, book: moveKeys({ ...book, words }, [{ from: key, to }]), key: to, warnings: row.warnings };
+}
+
+/**
+ * 語を単語帳から消す。追加日と印も消し、記録は残す(同じ鍵の語を足し直すと、また付く。§1)。
+ * @param {Book} book
+ * @param {string} key
+ * @returns {Book}
+ */
+export function deleteWord(book, key) {
+  const added = { ...book.added };
+  delete added[key];
+  return {
+    words: book.words.filter((w) => keyOf(w) !== key),
+    added,
+    records: book.records,
+    starred: book.starred.filter((k) => k !== key),
+  };
+}
+
+/**
+ * 印を付け外しする。
+ * @param {Book} book
+ * @param {string} key
+ * @returns {Book}
+ */
+export function toggleStar(book, key) {
+  const starred = book.starred.includes(key) ? book.starred.filter((k) => k !== key) : [...book.starred, key];
+  return { ...book, starred };
+}
+
+/**
+ * 入力欄の値から空欄を落とす(空文字は項目が無いのと同じ)。
+ * @param {WordInput} input
+ * @returns {Record<string, unknown>}
+ */
+function clean(input) {
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (typeof v === 'string' ? v.trim() !== '' : Array.isArray(v) ? v.length > 0 : v != null) out[k] = v;
+  }
+  return out;
 }
 
 /**
