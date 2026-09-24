@@ -30,6 +30,8 @@ export const SIMPLE_FORMAT = 'simple/v1';
 export const LEGACY_FORMAT = 'toeic-drill';
 /** 書き出すときに使う JSON の版 */
 export const CURRENT_JSON_FORMAT = 'tango-drill/v1';
+/** バックアップの版の頭(core/backup.js)。取り込みはこの版を読まず、バックアップの読み込みへ案内する */
+export const BACKUP_FORMAT_PREFIX = 'tango-drill-backup/';
 
 /** JSON の版ごとの読み手。過去の版の読み手を消さない(INV-3) */
 const JSON_READERS = /** @type {Record<string, (data: Record<string, unknown>) => ParseResult>} */ ({
@@ -126,6 +128,10 @@ function parseJson(text) {
   if (typeof fmt !== 'string') return fatal('json', 'format が文字列ではありません');
   const reader = JSON_READERS[fmt];
   if (reader) return reader(data);
+  // バックアップは記録ごと置き換える別の経路(Docs/22_Storage.md)。語の取り込みには使わない
+  if (fmt.startsWith(BACKUP_FORMAT_PREFIX)) {
+    return fatal(fmt, 'これはバックアップのファイルです。語の取り込みではなく、バックアップの読み込みを使ってください');
+  }
   const m = /^tango-drill\/v(\d+)$/.exec(fmt);
   const newest = Math.max(...Object.keys(JSON_READERS).map((k) => Number(k.split('/v')[1])));
   if (m && Number(m[1]) > newest) {
@@ -185,12 +191,12 @@ function unknownKeys(data, known) {
 }
 
 /**
- * JSON の 1 項目を語として読む。
+ * JSON の 1 項目を語として読む。バックアップの語(core/backup.js)も同じ規則で読む。
  * @param {unknown} item
  * @param {number} ref
  * @returns {ParsedRow}
  */
-function readItem(item, ref) {
+export function readItem(item, ref) {
   const raw = JSON.stringify(item) ?? String(item);
   if (!isObject(item)) return { ref, raw, error: '語が { } ではありません', warnings: [] };
   const warnings = unknownKeys(item, WORD_KEYS);

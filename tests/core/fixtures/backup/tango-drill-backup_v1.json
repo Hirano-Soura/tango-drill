@@ -1,0 +1,50 @@
+{
+  "format": "tango-drill-backup/v1",
+  "exportedAt": "2026-09-24T12:00:00.000Z",
+  "words": [
+    {
+      "en": "allocate",
+      "pos": "動",
+      "trans": "vt",
+      "ja": "割り当てる",
+      "ex": "The manager allocated the budget to each team.",
+      "exJa": "部長は各チームに予算を割り当てた。",
+      "note": "allocate A to B の形で使う",
+      "exSrc": "ai",
+      "tags": ["第3週"]
+    },
+    {
+      "en": "tentative",
+      "pos": "形",
+      "ja": "仮の"
+    },
+    {
+      "en": "on behalf of A",
+      "pos": "前置詞句",
+      "kind": "phrase",
+      "ja": "A を代表して",
+      "tags": ["第3週", "Part 5"]
+    },
+    {
+      "en": "itinerary"
+    }
+  ],
+  "added": {
+    "allocate|動": "2026-09-17",
+    "tentative|形": "2026-09-17",
+    "on behalf of A|前置詞句": "2026-09-24",
+    "itinerary|": "2026-09-24"
+  },
+  "records": {
+    "hist": {
+      "allocate|動": [1, 0, 1],
+      "tentative|形": [0],
+      "secure|動": [1, 1]
+    },
+    "self": {
+      "allocate|動": [1, 1, 1],
+      "tentative|形": [0]
+    }
+  },
+  "starred": ["tentative|形"]
+}
