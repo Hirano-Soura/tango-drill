@@ -7,6 +7,8 @@
 | --- | --- |
 | `core/distractors.js` | 語数の段(`tierOf` `quizModes`)・誤答の選定(`buildChoices`)・INV-5 の検出(`notOwnQuestions`) |
 | `tests/core/distractors.test.js` | §1 の表の全段と INV-5 の陽性対照 |
+| `core/builtinVocab.js` | 内蔵語彙(§4)。`Tools/Builtin/make_builtin.mjs` が生成する。手で直さず、生成元を直して作り直す |
+| `tests/core/builtinVocab.test.js` | 内蔵語彙の語数と項目、実データで 1 語の単語帳から 4 択が作れること |
 
 進捗はここに書かない。[50_Tasks.md](50_Tasks.md) を見る(UD-3)。
 
@@ -68,3 +70,6 @@
 - 利用者が内蔵語彙と同じ語を登録したときは、その語は自分の語として出題してよい
 - 内蔵語彙のデータ(既存の単語データ。鍵で重複を除いて 495 語)は誤答にしか使わないので、
   `en` `pos` `ja` `kind` だけを持つ。例文・補足は同梱しない
+- 作り直すときは toeic-drill を手元に clone し、`node Tools/Builtin/make_builtin.mjs <toeic-drill の単語データのフォルダ>` を回す。
+  日ごとのファイル(`VOCAB_` で始まるもの)だけを読み、取り込みと同じ解析(`toeic-drill` 版の読み手)で正規化する。
+  レポートは `Temp/tango-drill_builtin.txt`
