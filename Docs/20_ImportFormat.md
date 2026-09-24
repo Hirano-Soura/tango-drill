@@ -17,7 +17,7 @@
 | --- | --- | --- | --- |
 | `simple/v1` | §3 の「JSON として読む条件」に当たらない入力すべて | 貼り付け・AI の返答・表計算からのコピー | `simple_v1.txt` |
 | `tango-drill/v1` | JSON の `format` 欄 | ファイルでの受け渡し・教材セット・バックアップの単語部分 | `tango-drill_v1.json` |
-| `toeic-drill` | `format` 欄の無い JSON | 既存の単語データの移行(T-8)・内蔵語彙(T-2) | `toeic-drill.json` |
+| `toeic-drill` | `format` 欄の無い JSON | 既存の単語データの移行(T-8)・内蔵語彙(T-2.1) | `toeic-drill.json` |
 
 - **一度読めるようにした版の読み手は消さない。** `tests/core/importVersions.test.js` の `EVER_READABLE` が、
   版の一覧と見本を突き合わせる
