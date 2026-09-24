@@ -65,8 +65,9 @@ flowchart TB
 | 品詞の分解 | `posParts()` | `core/word.js` |
 | 4 択の誤答の選定 | `quizOptions()` | `core/distractors.js`。内蔵語彙による補完と品詞の一致を足した([21_Quiz.md](21_Quiz.md) §2) |
 | 2 段階クイズ(自己申告 → 選択) | `renderStage1()` `renderStage2()` | 画面層 |
-| 回数ベースの復習ミックス | `qAgo()` `qMiss()` `qFew()` | `core/`(T-3) |
-| 正誤の CSV 書き出し | `statsCsv()` | 提出用テキストの土台 |
+| 回数ベースの復習ミックス | `qAgo()` `qMiss()` `qFew()` `buildQuiz()` | `core/review.js`([21_Quiz.md](21_Quiz.md) §5) |
+| 正誤の記録と集計 | `recordAnswer()` `answerPairs()` `statOf()` | `core/review.js`([21_Quiz.md](21_Quiz.md) §6) |
+| 正誤の CSV 書き出し | `statsCsv()` | `core/review.js`。提出用テキストの土台 |
 | データの項目名 `en` `pos` `trans` `ja` `ex` `exJa` `note` | 単語データ全体 | 取り込み形式に引き継いだ。句表現の印 `kind` も引き継ぎ、`tags` `exSrc` を足した([20_ImportFormat.md](20_ImportFormat.md) §2) |
 
 ## 5. 検証

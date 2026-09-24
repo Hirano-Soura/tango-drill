@@ -4,6 +4,7 @@
 // 出自: toeic-drill の 単語ドリル.html(quizOptions)。
 
 import { keyOf, normPos, posParts, sensesOverlap } from './word.js';
+import { shuffle } from './random.js';
 
 /** @typedef {import('./word.js').Word} Word */
 
@@ -126,21 +127,6 @@ export function quizModes(own, opts = {}) {
 export function notOwnQuestions(questions, own) {
   const keys = new Set(own.map(keyOf));
   return questions.filter((q) => !keys.has(keyOf(q)));
-}
-
-/**
- * @template T
- * @param {readonly T[]} a
- * @param {() => number} rng
- * @returns {T[]}
- */
-function shuffle(a, rng) {
-  const out = a.slice();
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
 }
 
 /**
