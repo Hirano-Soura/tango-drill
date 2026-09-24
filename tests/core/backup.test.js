@@ -134,7 +134,9 @@ test('同じ鍵の語が 2 つあるバックアップは読まない(INV-4)', (
 test('JSON でない・最上位が配列・words が配列でない・形式の違うファイルは読まない', () => {
   assert.match(parseBackup('', OPTS).fatal ?? '', /空/);
   assert.match(parseBackup('{', OPTS).fatal ?? '', /JSON として読めません/);
-  assert.match(parseBackup('[]', OPTS).fatal ?? '', /\{ \}/);
+  assert.match(parseBackup('[]', OPTS).fatal ?? '', /で始まっていません/);
+  // 保存層は JSON にせず readBackup で読むので、最上位が配列のときの分岐はこちらで確かめる
+  assert.match(readBackup([], OPTS).fatal ?? '', /最上位が/);
   assert.match(parseBackup('{"format":"tango-drill-backup/v1","words":{}}', OPTS).fatal ?? '', /words が配列/);
   assert.match(parseBackup('{"format":"tango-drill-backup/x"}', OPTS).fatal ?? '', /不明な形式/);
   assert.match(parseBackup('{"format":1}', OPTS).fatal ?? '', /文字列ではありません/);
@@ -144,6 +146,28 @@ test('語の取り込みファイルをバックアップとして読ませる�
   const imp = readFileSync(new URL('./fixtures/import/tango-drill_v1.json', import.meta.url), 'utf8');
   assert.match(parseBackup(imp, OPTS).fatal ?? '', /バックアップのファイルではありません.*取り込み/);
   assert.match(parseBackup('{"words":[{"en":"a"}]}', OPTS).fatal ?? '', /format 欄なし/);
+  const simple = readFileSync(new URL('./fixtures/import/simple_v1.txt', import.meta.url), 'utf8');
+  assert.match(parseBackup(simple, OPTS).fatal ?? '', /で始まっていません.*取り込み/);
+  assert.match(parseBackup('```json\n{"format":"tango-drill/v1","words":[]}\n```', OPTS).fatal ?? '', /取り込み/);
+});
+
+test('exportedAt は無くても警告しない(任意の欄)。あって読めなければ警告する', () => {
+  const data = JSON.parse(read('tango-drill-backup_v1.json'));
+  delete data.exportedAt;
+  const r = readBackup(data, OPTS);
+  assert.deepEqual(r.warnings, []);
+  assert.equal(r.exportedAt, undefined);
+  data.exportedAt = 'きのう';
+  assert.deepEqual(readBackup(data, OPTS).warnings, ['書き出した日時(exportedAt)が読めません']);
+});
+
+test('未知の欄は、最上位でも records の中でも無視して警告する', () => {
+  const data = JSON.parse(read('tango-drill-backup_v1.json'));
+  data.theme = 'dark';
+  data.records.streak = 3;
+  const r = readBackup(data, OPTS);
+  assert.equal(r.fatal, undefined);
+  assert.deepEqual(r.warnings, ['未知の項目 theme を無視しました', '未知の項目 records.streak を無視しました']);
 });
 
 test('バックアップを語の取り込みに渡すと、バックアップの読み込みへ案内する(確認表を素通りして記録ごと入らない)', () => {

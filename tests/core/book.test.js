@@ -109,9 +109,22 @@ test('moveKeys: 追加日・記録・印を新しい鍵へ移し、古い鍵に�
 
 test('moveKeys: 移し先に消した語の記録が残っていれば、移してきた記録で置き換える', () => {
   const b = sample();
-  b.records = { hist: { ...b.records.hist, 'itinerary|名': [1, 1, 1] }, self: { ...b.records.self } };
+  b.records = {
+    hist: { ...b.records.hist, 'itinerary|名': [1, 1, 1] },
+    self: { ...b.records.self, 'itinerary|名': [0, 0, 0] },
+  };
   const out = moveKeys(b, [{ from: 'itinerary|', to: 'itinerary|名' }]);
   assert.deepEqual(out.records.hist['itinerary|名'], [0, 1]);
+  assert.deepEqual(out.records.self['itinerary|名'], [0, 1]);
+});
+
+test('moveKeys: 正誤と自己申告は 1 組で置き換える(移す元に自己申告が無ければ、移し先に残っていた自己申告も消す)', () => {
+  const b = sample();
+  // 移す元は自己申告を導入する前の記録(hist だけ)。移し先には消した語の hist と self が残っている
+  b.records = { hist: { 'itinerary|': [0, 1], 'itinerary|名': [1, 1, 1] }, self: { 'itinerary|名': [1, 1, 1] } };
+  const out = moveKeys(b, [{ from: 'itinerary|', to: 'itinerary|名' }]);
+  assert.deepEqual(out.records.hist, { 'itinerary|名': [0, 1] });
+  assert.deepEqual(out.records.self, {});
 });
 
 test('moveKeys: 移す元に記録が無ければ、移し先に残っていた記録がそのまま付く', () => {

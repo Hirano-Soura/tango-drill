@@ -26,7 +26,7 @@ export const REVIEW = Object.freeze({ N1: 1, N2: 3, M: 5, P: 2, FEW: 10, KEEP: 1
 export const GROUP_ORDER = Object.freeze(['today', 'd1', 'd3', 'miss', 'few']);
 
 /**
- * 回。日付(YYYY-MM-DD)と語の組。単語帳で何を 1 回とするかは Docs/50_Tasks.md の未決定事項。
+ * 回。日付(YYYY-MM-DD)と語の組。単語帳では同じ日に追加した語を 1 回とする(core/book.js の sessionsOf)。
  * @typedef {object} Session
  * @property {string} date
  * @property {readonly Word[]} items

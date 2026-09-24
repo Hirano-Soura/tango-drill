@@ -86,6 +86,9 @@ export function backupText(book, exportedAt) {
 export function parseBackup(text, opts) {
   const src = String(text ?? '').replace(/^\ufeff/, '');
   if (!src.trim()) return fatal('json', 'ファイルが空です');
+  if (!src.trim().startsWith('{')) {
+    return fatal('text', 'バックアップのファイルではありません({ } で始まっていません)。語の取り込みなら、取り込みから読み込んでください');
+  }
   /** @type {unknown} */
   let data;
   try {
@@ -132,7 +135,7 @@ function readV1(data, opts) {
 
   let exportedAt;
   if (typeof data.exportedAt === 'string' && !Number.isNaN(Date.parse(data.exportedAt))) exportedAt = data.exportedAt;
-  else warnings.push('書き出した日時(exportedAt)が読めません');
+  else if (data.exportedAt !== undefined) warnings.push('書き出した日時(exportedAt)が読めません');
 
   // 語: 1 語でも読めなければ全体を読まない
   if (!Array.isArray(data.words)) return fatal(format, 'words が配列ではありません');
@@ -223,6 +226,7 @@ function readRecords(v, warnings) {
     warnings.push('records が { } ではないため無視しました');
     return emptyRecords();
   }
+  for (const k of Object.keys(v)) if (k !== 'hist' && k !== 'self') warnings.push(`未知の項目 records.${k} を無視しました`);
   return { hist: readLists(v.hist, 'hist', warnings), self: readLists(v.self, 'self', warnings) };
 }
 

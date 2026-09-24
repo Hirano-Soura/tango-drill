@@ -1,9 +1,9 @@
-// 保存層(app/storage.js)。IndexedDB は fake-indexeddb で代える。実際のブラウザでの確認は Docs/50_Tasks.md の T-4。
+// 保存層(app/storage.js)。IndexedDB は fake-indexeddb で代える。実際のブラウザでの確認の手順は Docs/22_Storage.md §5。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { IDBFactory } from 'fake-indexeddb';
 import { openStorage } from '../../app/storage.js';
-import { backupText, parseBackup, CURRENT_BACKUP_FORMAT } from '../../core/backup.js';
+import { backupText, parseBackup, readBackup, toBackup, CURRENT_BACKUP_FORMAT } from '../../core/backup.js';
 import { countBook, emptyBook } from '../../core/book.js';
 
 /** @typedef {import('../../core/book.js').Book} Book */
@@ -56,7 +56,7 @@ test('保存の陽性対照: 別の IndexedDB(別のブラウザに当たる)に
   b.close();
 });
 
-test('T-4: A で書き出したファイルを B で読み込むと、語数と記録件数が一致する', async () => {
+test('T-4: A で書き出した中身を B で読み込むと、語数と記録件数が一致する', async () => {
   const a = await open();
   await a.save(sample());
   const text = backupText((await a.load(TODAY)).book, NOW);
@@ -124,14 +124,17 @@ test('退避が無いのに元に戻そうとすると、理由を付けて断�
   s.close();
 });
 
-test('保存してある中身はバックアップと同じ形(INV-3 の見本と同じ読み手で読む)', async () => {
+test('保存してある中身はバックアップと同じ形で、バックアップの読み手でそのまま読める', async () => {
   const factory = new IDBFactory();
   const s = await open(factory);
   await s.save(sample());
   s.close();
   const raw = await rawGet(factory, 'book');
   assert.equal(/** @type {any} */ (raw).format, CURRENT_BACKUP_FORMAT);
-  assert.equal(/** @type {any} */ (raw).exportedAt, NOW);
+  assert.deepEqual(raw, toBackup(sample(), NOW));
+  const r = readBackup(raw, { today: TODAY });
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.book, sample());
 });
 
 test('保存してある中身が読めなければ、空の単語帳として扱わずに知らせ、中身を上書きしない', async () => {

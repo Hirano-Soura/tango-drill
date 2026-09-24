@@ -1,4 +1,4 @@
-"""Document audit (UD-n) and core purity (INV-6).
+"""Document audit (UD-n), no sending out (INV-1) and core purity (INV-6).
 
 Usage (from the repository root):
     python Tools/DocAudit/doc_audit.py > /dev/null 2>&1; cat Temp/tango-drill_doc_audit.txt

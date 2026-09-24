@@ -27,6 +27,7 @@ FAIL があれば本人に伝えて止まる。
 ### 段 2 — 機械では判らない疎通
 
 現時点では無い(サーバー・MCP・外部 API に依存しない静的アプリのため)。
+ブラウザで確かめるときの静的サーバーは `node Tools/Dev/serve.mjs`(127.0.0.1:8765)。
 画面の確認(Playwright)を導入したら、ここに疎通の手順を足す。
 
 ---
@@ -35,8 +36,8 @@ FAIL があれば本人に伝えて止まる。
 
 | 系統 | 手段 | 本体の起動 | 回数無制限か |
 | --- | --- | --- | --- |
-| 挙動 | `npm test`(`node --test`。対象は `core/` のみ) | 不要 | 無制限 |
-| 型 | `npm run typecheck`(`tsc --noEmit`。JSDoc の型注釈を検査) | 不要 | 無制限 |
+| 挙動 | `npm test`(`node --test`。対象は `core/` と `app/` の保存層。IndexedDB は `fake-indexeddb` で代える) | 不要 | 無制限 |
+| 型 | `npm run typecheck`(`tsc --noEmit`。JSDoc の型注釈を検査。`core/` は DOM なしの `tsconfig.json`、`app/` は DOM ありの `tsconfig.app.json`) | 不要 | 無制限 |
 | 文書 | `python Tools/DocAudit/doc_audit.py`(レポートは `Temp/tango-drill_doc_audit.txt`) | 不要 | 無制限 |
 | 画面(三本立ての外) | Playwright の通し確認 + 実機での目視 | 必要 | 節目のみ |
 
@@ -70,11 +71,11 @@ FAIL があれば本人に伝えて止まる。
 
 | ID | 内容 | 破った場合 | 検査手段 |
 | --- | --- | --- | --- |
-| `INV-1` | 学習記録・単語を外部へ送信しない | 個人情報を扱わない前提が崩れ、授業で使えなくなる | 機械検査(送信 API の出現を許可リストと照合)。T-4 で導入 |
-| `INV-2` | 取り込みは必ず確認表を経てから保存する | AI の誤出力で単語帳が壊れる | `core/` の関門(確定した確認表しか保存用の一覧にしない)は挙動テスト(`tests/core/importPlan.test.js`)。画面が確認表を通すことは T-5.1 で Playwright、バックアップの読み込みの扱いは T-4 で決める |
-| `INV-3` | 取り込み形式は版を持ち、過去の版をすべて読める | 利用者のバックアップが読めなくなる | 挙動テスト(`tests/core/importVersions.test.js` が各版の見本を読ませる) |
-| `INV-4` | 語の同一性は `見出し語 + 品詞` | 同綴り別品詞の記録が混ざる | 挙動テスト(`tests/core/word.test.js`、取り込みでの重複は `tests/core/importPlan.test.js`) |
-| `INV-5` | 内蔵語彙は誤答にだけ使い、問題には出さない | 登録していない語が出題される | 挙動テスト(誤答の側は `tests/core/distractors.test.js`、出題集合の側は `tests/core/review.test.js`。どちらも内蔵語彙を 1 件混ぜた入力を検出する陽性対照つき) |
+| `INV-1` | 学習記録・単語を外部へ送信しない | 個人情報を扱わない前提が崩れ、授業で使えなくなる | 機械検査(`doc_audit.py` の `INV-1 no send`。配布するコードに出る送信 API と外部 URL を、同じファイルの許可リスト `INV1_ALLOW` と照合) |
+| `INV-2` | 取り込みは必ず確認表を経てから保存する | AI の誤出力で単語帳が壊れる | `core/` の関門(確定した確認表しか保存用の一覧にしない)は挙動テスト(`tests/core/importPlan.test.js`)。画面が確認表を通すことは T-5.1 で Playwright。バックアップの読み込みは語の取り込みではなく、確認表を通さずに件数を見せて置き換える(`Docs/22_Storage.md` §3)。バックアップを語の取り込みに渡すと拒否することは挙動テスト(`tests/core/backup.test.js`) |
+| `INV-3` | 取り込み形式とバックアップ形式は版を持ち、過去の版をすべて読める | 利用者のバックアップが読めなくなる | 挙動テスト(`tests/core/importVersions.test.js` と `tests/core/backup.test.js` が各版の見本を読ませる) |
+| `INV-4` | 語の同一性は `見出し語 + 品詞` | 同綴り別品詞の記録が混ざる | 挙動テスト(`tests/core/word.test.js`、取り込みでの重複は `tests/core/importPlan.test.js`、バックアップの中の重複と `duplicateKeys` は `tests/core/backup.test.js` と `tests/core/book.test.js`) |
+| `INV-5` | 内蔵語彙は誤答にだけ使い、問題には出さない | 登録していない語が出題される | 挙動テスト(誤答の側は `tests/core/distractors.test.js`、出題集合の側は `tests/core/review.test.js`。どちらも内蔵語彙を 1 件混ぜた入力を検出する陽性対照つき。単語帳から作った回の出題集合で違反が無いことは `tests/core/book.test.js`) |
 | `INV-6` | `core/` はブラウザの API(`window` `document` `indexedDB` `localStorage` 等)に触れない | Node だけで回す検証経路(UV-3)が失われる | 機械検査(`doc_audit.py` の `INV-6 core purity`) |
 
 ---

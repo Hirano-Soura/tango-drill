@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["Tools/Dev/serve.mjs", "8765"],
+      "port": 8765
+    }
+  ]
+}
