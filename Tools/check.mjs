@@ -36,22 +36,28 @@ const notOk = t.out.split('\n').filter((l) => /^\s*not ok /.test(l));
 for (const l of notOk) lines.push('    ' + l.trim());
 
 // --- type ---
+// tsconfig.json: core/ without the DOM lib (Docs/52_Pitfalls.md P-1). tsconfig.app.json: app/ with DOM.
 const tscBin = join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
-const listed = run(tscBin, ['-p', 'tsconfig.json', '--listFilesOnly'], process.platform === 'win32');
-const own = listed.out.split(/\r?\n/).map((s) => s.trim())
-  .filter((s) => s && !/node_modules/.test(s) && /\.(js|mjs|ts)$/.test(s));
-const tc = run(tscBin, ['-p', 'tsconfig.json'], process.platform === 'win32');
-if (listed.code !== 0 && own.length === 0) {
-  fail++; lines.push('[FAIL] type: tsc not runnable (run npm install)');
-  lines.push('    ' + listed.out.trim().split('\n').slice(0, 5).join('\n    '));
-} else if (own.length === 0) {
-  fail++; lines.push('[FAIL] type: tsc checked 0 project files');
-} else if (tc.code !== 0) {
-  fail++; lines.push(`[FAIL] type: tsc exit=${tc.code}, files=${own.length}`);
-  for (const l of tc.out.trim().split('\n')) lines.push('    ' + l);
-} else {
-  lines.push(`[PASS] type: tsc files=${own.length}`);
+const ownAll = new Set();
+for (const project of ['tsconfig.json', 'tsconfig.app.json']) {
+  const listed = run(tscBin, ['-p', project, '--listFilesOnly'], process.platform === 'win32');
+  const own = listed.out.split(/\r?\n/).map((s) => s.trim())
+    .filter((s) => s && !/node_modules/.test(s) && /\.(js|mjs|ts)$/.test(s));
+  for (const f of own) ownAll.add(f);
+  const tc = run(tscBin, ['-p', project], process.platform === 'win32');
+  if (listed.code !== 0 && own.length === 0) {
+    fail++; lines.push(`[FAIL] type(${project}): tsc not runnable (run npm install)`);
+    lines.push('    ' + listed.out.trim().split('\n').slice(0, 5).join('\n    '));
+  } else if (own.length === 0) {
+    fail++; lines.push(`[FAIL] type(${project}): tsc checked 0 project files`);
+  } else if (tc.code !== 0) {
+    fail++; lines.push(`[FAIL] type(${project}): tsc exit=${tc.code}, files=${own.length}`);
+    for (const l of tc.out.trim().split('\n')) lines.push('    ' + l);
+  } else {
+    lines.push(`[PASS] type(${project}): tsc files=${own.length}`);
+  }
 }
+const own = [...ownAll];
 
 const out = [
   'tango-drill check report',

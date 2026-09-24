@@ -4,11 +4,12 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.app.json",
     "check": "node Tools/check.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2"
   }
 }
