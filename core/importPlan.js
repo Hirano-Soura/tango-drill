@@ -74,6 +74,7 @@ const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
  * @typedef {object} ApplyResult
  * @property {Word[]} words 保存する単語帳の全体
  * @property {{ from: string, to: string }[]} rekeys 品詞が埋まって鍵が変わった語(記録の付け替えに使う)
+ * @property {string[]} addedKeys 新しく足した語の鍵(追加日を付けるのに使う)
  * @property {number} added
  * @property {number} updated
  */
@@ -304,6 +305,8 @@ export function applyImport(existing, confirmedPlan) {
   const index = new Map(words.map((w, i) => [keyOf(w), i]));
   /** @type {{ from: string, to: string }[]} */
   const rekeys = [];
+  /** @type {string[]} */
+  const addedKeys = [];
   let added = 0;
   let updated = 0;
   for (const row of plan.rows) {
@@ -314,6 +317,7 @@ export function applyImport(existing, confirmedPlan) {
       if (index.has(keyOf(row.word))) throw new Error(`${keyOf(row.word)} は既にあります(INV-4)`);
       index.set(keyOf(row.word), words.length);
       words.push(cloneWord(row.word));
+      addedKeys.push(keyOf(row.word));
       added++;
       continue;
     }
@@ -333,7 +337,7 @@ export function applyImport(existing, confirmedPlan) {
     }
     updated++;
   }
-  return { words, rekeys, added, updated };
+  return { words, rekeys, addedKeys, added, updated };
 }
 
 /**

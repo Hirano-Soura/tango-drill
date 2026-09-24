@@ -3,9 +3,12 @@
 
 import { keyOf } from './word.js';
 import { emptyRecords } from './review.js';
+import { applyImport } from './importPlan.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./review.js').Records} Records */
+/** @typedef {import('./review.js').Session} Session */
+/** @typedef {import('./importPlan.js').ConfirmedPlan} ConfirmedPlan */
 
 /**
  * 単語帳の全体。語以外の項目は語の鍵(INV-4)で引く。
@@ -55,6 +58,40 @@ export function moveKeys(book, rekeys) {
     if (starred.includes(from)) starred = [...new Set(starred.map((k) => (k === from ? to : k)))];
   }
   return { words: book.words, added, records: { hist, self }, starred };
+}
+
+/**
+ * 回の一覧(B1: 語を追加した日で束ねる。Docs/21_Quiz.md §5)。回の中の語は単語帳の並び順。
+ * 追加日の無い語はどの回にも入れない(Book の定義では起きない)。
+ * @param {Book} book
+ * @returns {Session[]}
+ */
+export function sessionsOf(book) {
+  /** @type {Map<string, Word[]>} */
+  const byDate = new Map();
+  for (const w of book.words) {
+    const d = book.added[keyOf(w)];
+    if (d === undefined) continue;
+    const list = byDate.get(d);
+    if (list) list.push(w);
+    else byDate.set(d, [w]);
+  }
+  return [...byDate.keys()].sort().map((date) => ({ date, items: /** @type {Word[]} */ (byDate.get(date)) }));
+}
+
+/**
+ * 確定した確認表(INV-2)を単語帳の全体に当てる。新しく足した語には today を追加日として付け、
+ * 品詞が埋まって鍵が変わった語は追加日・記録・印を新しい鍵へ移す(T-4.1)。渡した Book は変えない。
+ * @param {Book} book
+ * @param {ConfirmedPlan} confirmedPlan
+ * @param {string} today YYYY-MM-DD
+ * @returns {{ book: Book, added: number, updated: number }}
+ */
+export function importIntoBook(book, confirmedPlan, today) {
+  const r = applyImport(book.words, confirmedPlan);
+  const moved = moveKeys({ ...book, words: r.words }, r.rekeys);
+  for (const k of r.addedKeys) moved.added[k] = today;
+  return { book: moved, added: r.added, updated: r.updated };
 }
 
 /**
