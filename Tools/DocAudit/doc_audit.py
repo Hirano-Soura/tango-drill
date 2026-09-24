@@ -41,6 +41,25 @@ BROWSER_API = re.compile(
     r"\b(window|document|indexedDB|localStorage|sessionStorage|navigator|fetch|XMLHttpRequest|sendBeacon)\b"
 )
 
+# INV-1: ways shipped code could send data out. Checked on code with comments removed.
+SEND_API = {
+    "fetch": re.compile(r"\bfetch\s*\("),
+    "XMLHttpRequest": re.compile(r"\bXMLHttpRequest\b"),
+    "sendBeacon": re.compile(r"\bsendBeacon\b"),
+    "WebSocket": re.compile(r"\bWebSocket\b"),
+    "EventSource": re.compile(r"\bEventSource\b"),
+    "RTCPeerConnection": re.compile(r"\bRTCPeerConnection\b"),
+    "importScripts": re.compile(r"\bimportScripts\s*\("),
+    "form action": re.compile(r"<form\b[^>]*\baction\s*=", re.I),
+    "external URL": re.compile(r"\b(?:https?|wss?)://", re.I),
+}
+# Shipped code = everything except these top-level directories (they never reach the browser).
+NOT_SHIPPED = {"tests", "Tools", "Docs", ".github", ".claude"}
+SHIPPED_SUFFIXES = {".js", ".mjs", ".html"}
+# INV-1 allow list: (path relative to the root, SEND_API name) -> reason. Add a row only with a reason
+# that shows no word or record leaves the device (e.g. a service worker fetching its own files).
+INV1_ALLOW: dict[tuple[str, str], str] = {}
+
 
 class Audit:
     def __init__(self, root: Path) -> None:
@@ -173,6 +192,17 @@ class Audit:
                 if m:
                     self.add("FAIL", "INV-6 core purity", f"{self.rel(p)}:{i} uses '{m.group(1)}'")
 
+    def check_no_send(self) -> None:  # INV-1
+        files = [p for p in self.files()
+                 if p.suffix in SHIPPED_SUFFIXES and p.relative_to(self.root).parts[0] not in NOT_SHIPPED]
+        self.seen["INV-1 no send"] = len(files)
+        for p in files:
+            text = strip_comments(p.read_text(encoding="utf-8"))
+            for i, line in enumerate(text.splitlines(), 1):
+                for name, pat in SEND_API.items():
+                    if pat.search(line) and (self.rel(p), name) not in INV1_ALLOW:
+                        self.add("FAIL", "INV-1 no send", f"{self.rel(p)}:{i} uses {name} (not in INV1_ALLOW)")
+
     def check_invisible_chars(self) -> None:  # P-3
         files = [p for p in self.files() if p.suffix in TEXT_SUFFIXES]
         self.seen["P-3 invisible chars"] = len(files)
@@ -190,7 +220,7 @@ class Audit:
     CHECKS = [
         "check_index_orphans", "check_links", "check_dated_names", "check_progress_symbols",
         "check_completion_reports", "check_strikethrough", "check_abs_paths", "check_competing_rules",
-        "check_pseudo_diagrams", "check_core_purity", "check_invisible_chars",
+        "check_pseudo_diagrams", "check_core_purity", "check_no_send", "check_invisible_chars",
     ]
 
     def run(self) -> "Audit":
@@ -200,6 +230,15 @@ class Audit:
 
     def fails(self) -> int:
         return sum(1 for lv, _, _ in self.findings if lv == "FAIL")
+
+
+def strip_comments(text: str) -> str:
+    """Blank out /* */, <!-- --> and // comments, keeping line numbers. '//' right after ':' is kept
+    so that a URL such as https://x is still seen (it is what INV-1 looks for)."""
+    keep_lines = lambda m: "\n" * m.group(0).count("\n")
+    text = re.sub(r"/\*.*?\*/", keep_lines, text, flags=re.S)
+    text = re.sub(r"<!--.*?-->", keep_lines, text, flags=re.S)
+    return "\n".join(re.sub(r"(?<!:)//.*$", "", line) for line in text.split("\n"))
 
 
 def write(path: Path, lines: list[str]) -> None:
@@ -235,8 +274,17 @@ def build_fixture(root: Path, broken: bool) -> None:
     (root / "Docs" / "50_Tasks.md").write_text("| T-0 | \u2705 |\n", encoding="utf-8")
     (root / "CLAUDE.md").write_text("rules\n", encoding="utf-8")
     (root / "core" / "a.js").write_text("// window in a comment is fine\nexport const x = 1;\n", encoding="utf-8")
+    (root / "app").mkdir()
+    (root / "app" / "ok.js").write_text(
+        "// fetch( and https://example.com in a comment are fine\n/* new WebSocket(u) */\nexport const y = 2; // x\n",
+        encoding="utf-8",
+    )
+    (root / "tests").mkdir()
+    (root / "tests" / "t.js").write_text("fetch('https://example.com');\n", encoding="utf-8")  # not shipped
     if not broken:
         return
+    (root / "app" / "send.js").write_text("export const s = (d) => navigator.sendBeacon('/x', d);\n", encoding="utf-8")  # INV-1
+    (root / "index.html").write_text('<script src="https://cdn.example.com/a.js"></script>\n', encoding="utf-8")   # INV-1
     (root / "Docs" / "20_Orphan.md").write_text("orphan\n", encoding="utf-8")                  # UD-1
     (root / "Docs" / "10_A.md").write_text("[x](missing.md)\n", encoding="utf-8")               # links
     (root / "Docs" / "Status_20260923.md").write_text("x\n", encoding="utf-8")                  # UD-2 (+UD-1)
@@ -268,7 +316,7 @@ def self_test() -> int:
     expected = sorted({"UD-1 index", "links", "UD-2 dated names", "UD-3 progress symbols",
                        "UD-4 completion reports", "UD-6 strikethrough", "UD-8 absolute paths",
                        "UD-9 competing rules", "UD-12 pseudo diagrams", "INV-6 core purity",
-                       "P-3 invisible chars"})
+                       "INV-1 no send", "P-3 invisible chars"})
     for c in expected:
         if c in fired:
             lines.append(f"[PASS] detects {c}")
