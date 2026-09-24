@@ -12,18 +12,34 @@ test('T-2.1: 内蔵語彙は 495 語(toeic-drill の単語データを鍵で重�
   assert.equal(new Set(BUILTIN_VOCAB.map(keyOf)).size, 495, '鍵の重複が無い');
 });
 
-test('T-2.1: どの語も §4 の項目だけを持ち、見出し語・品詞・意味がある', () => {
-  for (const w of BUILTIN_VOCAB) {
-    for (const k of Object.keys(w)) assert.ok(FIELDS.includes(k), `${w.en}: 余計な項目 ${k}`);
-    assert.ok(w.en && w.pos && w.ja, `${w.en}: 欠けている項目がある`);
-    if (w.kind !== undefined) assert.equal(w.kind, 'phrase');
+/**
+ * 項目の検査。問題のある語ごとに 1 行を返す。
+ * @param {readonly Record<string, unknown>[]} words
+ * @returns {string[]}
+ */
+function fieldProblems(words) {
+  const out = [];
+  for (const w of words) {
+    const extra = Object.keys(w).filter((k) => !FIELDS.includes(k));
+    if (extra.length) out.push(`${w.en}: 余計な項目 ${extra.join(' ')}`);
+    if (!(w.en && w.pos && w.ja)) out.push(`${w.en}: 欠けている項目がある`);
+    if (w.kind !== undefined && w.kind !== 'phrase') out.push(`${w.en}: kind が phrase でない`);
   }
+  return out;
+}
+
+test('T-2.1: どの語も §4 の項目だけを持ち、見出し語・品詞・意味がある', () => {
+  assert.deepEqual(fieldProblems(BUILTIN_VOCAB), []);
 });
 
-test('T-2.1 陽性対照: 項目の検査は余計な項目を見つけられる', () => {
-  const planted = [...BUILTIN_VOCAB, { en: 'x', pos: '名', ja: '甲', ex: 'An example.' }];
-  const extra = planted.filter((w) => Object.keys(w).some((k) => !FIELDS.includes(k)));
-  assert.deepEqual(extra.map((w) => w.en), ['x']);
+test('T-2.1 陽性対照: 同じ検査が、余計な項目・欠けた項目・使えない kind を見つけられる', () => {
+  const planted = [
+    ...BUILTIN_VOCAB,
+    { en: 'x', pos: '名', ja: '甲', ex: 'An example.' },
+    { en: 'y', pos: '名' },
+    { en: 'z', pos: '名', ja: '乙', kind: 'word' },
+  ];
+  assert.deepEqual(fieldProblems(planted), ['x: 余計な項目 ex', 'y: 欠けている項目がある', 'z: kind が phrase でない']);
 });
 
 test('内蔵語彙は書き換えられない', () => {

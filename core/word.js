@@ -40,6 +40,16 @@ export function keyOf(w) {
 }
 
 /**
+ * 句表現か。kind が "phrase" か、品詞に「句」を含む語。
+ * 取り込みは品詞に「句」を含む語に kind を付けるが、付いていない入力でも同じに扱う。
+ * @param {Pick<Word, 'pos' | 'kind'>} w
+ * @returns {boolean}
+ */
+export function isPhrase(w) {
+  return w.kind === 'phrase' || normPos(w).includes('句');
+}
+
+/**
  * 品詞を配列に分解する。"動/名" → ["動", "名"]。空なら句表現は "句"、それ以外は ""。
  * @param {Pick<Word, 'pos' | 'kind'>} w
  * @returns {string[]}

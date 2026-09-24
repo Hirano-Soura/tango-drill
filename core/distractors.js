@@ -3,7 +3,7 @@
 // 内蔵語彙は誤答にだけ使い、問題には出さない(INV-5)。規則は Docs/21_Quiz.md §1・§2・§4。
 // 出自: toeic-drill の 単語ドリル.html(quizOptions)。
 
-import { keyOf, normPos, posParts, sensesOverlap } from './word.js';
+import { keyOf, isPhrase, posParts, sensesOverlap } from './word.js';
 import { shuffle } from './random.js';
 
 /** @typedef {import('./word.js').Word} Word */
@@ -73,12 +73,6 @@ export const LEVELS = Object.freeze(['pos', 'kind', 'any', 'senses']);
 
 /** @param {Word} w */
 const hasMeaning = (w) => String(w.ja || '').trim() !== '';
-
-/**
- * 句表現か。取り込みは品詞に「句」を含む語に kind を付けるが、付いていない入力でも同じに扱う。
- * @param {Word} w
- */
-const isPhrase = (w) => w.kind === 'phrase' || normPos(w).includes('句');
 
 /**
  * 4 択に使える自分の語の数。意味(ja)の無い語は問題にも誤答にも使えないので数えない。

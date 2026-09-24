@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { keyOf, normPos, posParts, jaSenses, sensesOverlap } from '../../core/word.js';
+import { keyOf, normPos, posParts, jaSenses, sensesOverlap, isPhrase } from '../../core/word.js';
+
+test('isPhrase: kind が phrase か、品詞に「句」を含む語', () => {
+  assert.equal(isPhrase({ kind: 'phrase' }), true);
+  assert.equal(isPhrase({ pos: '動詞句' }), true);
+  assert.equal(isPhrase({ pos: '名(句で使う)' }), false, '括弧書きの補足は見ない');
+  assert.equal(isPhrase({ pos: '名' }), false);
+});
 
 test('INV-4: 同じ綴りでも品詞が違えば別の語', () => {
   const a = { en: 'secure', pos: '形', ja: '安全な' };

@@ -3,7 +3,7 @@
 // 同じ入力・同じ乱数なら既存アプリと同じ出題集合・同じ並びになることを比較テストで確かめている。
 // 規則は Docs/21_Quiz.md §5・§6。
 
-import { keyOf } from './word.js';
+import { keyOf, isPhrase } from './word.js';
 import { shuffle } from './random.js';
 
 /** @typedef {import('./word.js').Word} Word */
@@ -12,7 +12,7 @@ import { shuffle } from './random.js';
 /**
  * 復習ミックスの定数(既存アプリと同じ値)。
  * - N1 / N2: 「n 回前」の群に使う回数
- * - M / P: 直近 M 回のうち P 回以上間違えた語を「よく間違える」とする
+ * - M / P: 直近 M 回の回答のうち P 回以上間違えた語を「よく間違える」とする
  * - FEW: 「回答数が少ない」群の上限
  * - KEEP: 語ごとに残す記録の件数
  */
@@ -26,7 +26,7 @@ export const REVIEW = Object.freeze({ N1: 1, N2: 3, M: 5, P: 2, FEW: 10, KEEP: 1
 export const GROUP_ORDER = Object.freeze(['today', 'd1', 'd3', 'miss', 'few']);
 
 /**
- * 回。語を追加した(配られた)まとまり。日付は YYYY-MM-DD。
+ * 回。日付(YYYY-MM-DD)と語の組。単語帳で何を 1 回とするかは Docs/50_Tasks.md の未決定事項。
  * @typedef {object} Session
  * @property {string} date
  * @property {readonly Word[]} items
@@ -86,7 +86,7 @@ export function answerCount(records, key) {
 }
 
 /**
- * 直近 M 回のうち P 回以上間違えたか。
+ * 直近 M 回の回答のうち P 回以上間違えたか。
  * @param {Records} records
  * @param {string} key
  */
@@ -159,7 +159,7 @@ export function reviewMix(sessions, records, opts) {
   const rng = opts.rng || Math.random;
   const kind = opts.kind || 'all';
   const filterKind = (/** @type {Word[]} */ a) =>
-    kind === 'all' ? a : a.filter((w) => (w.kind === 'phrase') === (kind === 'phrase'));
+    kind === 'all' ? a : a.filter((w) => isPhrase(w) === (kind === 'phrase'));
   const all = byDate(sessions).flatMap((s) => s.items);
   const ago = (/** @type {number} */ n) => sessionAgo(sessions, opts.today, n);
   const miss = all.filter((w) => missOften(records, keyOf(w)));

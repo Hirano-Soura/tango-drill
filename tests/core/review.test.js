@@ -103,12 +103,13 @@ test('復習ミックス: 回答数が少ない群は上限 FEW 件', () => {
 
 test('復習ミックス: 種別で絞れる(取り込んだ語は単語に kind を持たない)', () => {
   const phrase = { en: 'deal with A', pos: '動詞句', kind: 'phrase', ja: 'A に対処する' };
-  const sessions = [{ date: '2026-07-01', items: [w('a'), phrase] }];
+  const bare = { en: 'look into A', pos: '動詞句', ja: 'A を調べる' }; // kind の無い句表現
+  const sessions = [{ date: '2026-07-01', items: [w('a'), phrase, bare] }];
   const q = (/** @type {'all' | 'word' | 'phrase'} */ kind) =>
     reviewMix(sessions, emptyRecords(), { today: '2026-07-01', kind, rng: () => 0 }).map((x) => x.word.en).sort();
-  assert.deepEqual(q('all'), ['a', 'deal with A']);
+  assert.deepEqual(q('all'), ['a', 'deal with A', 'look into A']);
   assert.deepEqual(q('word'), ['a']);
-  assert.deepEqual(q('phrase'), ['deal with A']);
+  assert.deepEqual(q('phrase'), ['deal with A', 'look into A'], '誤答の選定と同じ句表現の判定(isPhrase)');
 });
 
 test('INV-5: 自分の単語帳から作った出題集合に、内蔵語彙の語は入らない', () => {

@@ -118,7 +118,9 @@ test('T-3: 復習ミックスの出題集合と出題順が既存アプリと一
     if (s.days.some((d) => d.date > s.today)) seen.future++;
     if (sessions.some((d) => !d.items.length)) seen.empty++;
     if (Object.keys(s.self).some((k) => s.self[k].length < s.hist[k].length)) seen.shortSelf++;
-    if (sessions.length >= 2) seen.gap++;
+    // 回の間に日付の空き(学習しなかった日)がある入力
+    const dates = sessions.filter((d) => d.items.length).map((d) => Number(d.date.slice(-2)));
+    if (dates.some((d, i) => i > 0 && d - dates[i - 1] > 1)) seen.gap++;
   }
   // 比較が各群・各場面を実際に通ったこと(UV-1)
   for (const [k, n] of Object.entries(seen)) assert.ok(n > 0, `${k} を通った入力が無い`);
