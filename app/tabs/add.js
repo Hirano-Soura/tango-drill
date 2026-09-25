@@ -5,7 +5,7 @@
 import { esc, actionOf, splitTags } from '../dom.js';
 import { wordFields, readWordFields, posLine } from '../wordForm.js';
 import { addOneWord, importIntoBook } from '../../core/book.js';
-import { parseImport } from '../../core/importFormat.js';
+import { parseImport, SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
@@ -60,7 +60,7 @@ export function render(ctx) {
       <p class="hint">AI の返答や表計算からのコピーを貼り付けるか、ファイルを選びます。
         1 行 1 語で「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」の順。確認表で中身を確かめてから単語帳に入れます。</p>
       <div class="wordform">
-        <div class="f"><label for="imp-text">貼り付ける内容</label><textarea id="imp-text" rows="6" spellcheck="false">${esc(pasted)}</textarea></div>
+        <div class="f"><label for="imp-text">貼り付ける内容</label><textarea id="imp-text" rows="6" spellcheck="false" placeholder="${esc(SIMPLE_EXAMPLE)}">${esc(pasted)}</textarea></div>
         <div class="f"><label for="imp-file">ファイルから読む</label><input type="file" id="imp-file" accept=".txt,.json,.tsv,.md,text/plain,application/json"></div>
         <div class="two">
           <div class="f"><label for="imp-tags">全部の語に付けるタグ(読点・カンマ区切り)</label><input id="imp-tags" autocomplete="off" value="${esc(tagText)}"></div>
@@ -69,7 +69,8 @@ export function render(ctx) {
           </select></div>
         </div>
       </div>
-      <div class="rowbtns"><button type="button" data-action="plan"${plan ? '' : ' class="primary"'}>確認表を作る</button></div>
+      <div class="rowbtns"><button type="button" data-action="plan"${plan ? '' : ' class="primary"'}>確認表を作る</button>
+        <button type="button" data-action="example"${pasted ? ' disabled' : ''}>例を入れる</button></div>
       ${plan ? planHtml(plan) : ''}
       <p class="msg${importIsError ? ' err' : ''}" role="status" id="import-msg">${esc(importMsg)}</p>
     </section>`;
@@ -117,7 +118,9 @@ function bindImport(ctx) {
       msg.classList.remove('err');
     }
   };
-  text.oninput = () => { pasted = text.value; stale(); };
+  // 例を入れるのは空の欄にだけ(貼り付けた内容を例で消さない)
+  const exampleBtn = /** @type {HTMLButtonElement} */ (ctx.root.querySelector('[data-action="example"]'));
+  text.oninput = () => { pasted = text.value; exampleBtn.disabled = pasted !== ''; stale(); };
   tags.oninput = () => { tagText = tags.value; stale(); };
   src.onchange = () => { exSrc = /** @type {typeof exSrc} */ (src.value); stale(); };
   file.onchange = async () => {
@@ -145,7 +148,11 @@ function bindImport(ctx) {
 
   ctx.root.onclick = async (e) => {
     const act = actionOf(e)?.dataset.action;
-    if (act === 'plan') {
+    if (act === 'example' && !text.value) {
+      text.value = SIMPLE_EXAMPLE;
+      text.dispatchEvent(new Event('input'));
+      text.focus();
+    } else if (act === 'plan') {
       pasted = text.value;
       tagText = tags.value;
       plan = planImport(ctx.book.words, parseImport(pasted), { exSrc: exSrc || undefined, tags: splitTags(tagText) });

@@ -2,6 +2,7 @@
 // 確認表の規則そのもの(行の種類・重ね方)は tests/core/importPlan.test.js が見る。ここでは画面が必ずそれを通すことを見る。
 import { test, expect } from '@playwright/test';
 import { storedBook, fits } from './helpers.js';
+import { SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -142,4 +143,29 @@ test('当て先の決まらない行は、既定では取り込まず、選ん�
     { en: 'secure', pos: '形', ja: '安全な' },
     { en: 'secure', pos: '動', ja: '確保する', note: '補足メモ' },
   ]);
+});
+
+test('空の貼り付け欄には例を灰色で見せ(値は空)、「例を入れる」で入れた例はそのまま取り込める。入力があるときは例で消さない', async ({ page }) => {
+  await page.goto('/');
+  const box = page.getByLabel('貼り付ける内容');
+  const btn = page.getByRole('button', { name: '例を入れる' });
+  // 例は placeholder(値ではない)。そのまま「確認表を作る」を押すと、空の入力として断る
+  await expect(box).toHaveAttribute('placeholder', SIMPLE_EXAMPLE);
+  await expect(box).toHaveValue('');
+  await page.getByRole('button', { name: '確認表を作る' }).click();
+  await expect(page.locator('#plan')).toContainText('入力が空です');
+
+  await btn.click();
+  await expect(box).toHaveValue(SIMPLE_EXAMPLE);
+  await expect(btn).toBeDisabled();
+  await page.getByRole('button', { name: '確認表を作る' }).click();
+  await expect(page.locator('#plan li.prow .act')).toHaveText(['足す', '足す', '足す']);
+  await fits(page, '例の確認表');
+
+  // 入力があるあいだは押せない。空にすると押せる
+  await box.fill('reimburse | 動 | 払い戻す');
+  await expect(btn).toBeDisabled();
+  await box.fill('');
+  await expect(btn).toBeEnabled();
+  expect(await words(page)).toEqual([]);
 });

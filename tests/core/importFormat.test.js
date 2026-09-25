@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseImport, normalizePos, looksEnglish } from '../../core/importFormat.js';
+import { parseImport, normalizePos, looksEnglish, SIMPLE_EXAMPLE, SIMPLE_FORMAT } from '../../core/importFormat.js';
 
 /** @param {string} name */
 const read = (name) => readFileSync(new URL('./fixtures/import/' + name, import.meta.url), 'utf8');
@@ -14,6 +14,28 @@ const errors = (r) => r.rows.filter((x) => x.error !== undefined);
 const skipped = (r) => r.rows.filter((x) => x.skipped !== undefined);
 
 // --- 見本 ----------------------------------------------------------------------
+
+/**
+ * 取り込み欄の例として困ること(語として読めない行・注意の出る行・簡易形式でない)。無ければ空。
+ * @param {string} text
+ */
+const exampleProblems = (text) => {
+  const r = parseImport(text);
+  return [
+    ...(r.format === SIMPLE_FORMAT ? [] : [`format ${r.format}`]),
+    ...r.warnings,
+    ...r.rows.filter((x) => !x.word || x.warnings.length).map((x) => `${x.ref}: ${x.error ?? x.skipped ?? x.warnings.join(' / ')}`),
+  ];
+};
+
+test('取り込み欄の例(SIMPLE_EXAMPLE)は、どの行も注意なしに語として読める。全項目の行を含む', () => {
+  assert.deepEqual(exampleProblems(SIMPLE_EXAMPLE), []);
+  const ws = words(parseImport(SIMPLE_EXAMPLE));
+  assert.equal(ws.length, SIMPLE_EXAMPLE.split('\n').length);
+  assert.ok(ws.some((w) => w.pos && w.ja && w.ex && w.exJa && w.note), '全項目の行が無い');
+  // 陽性対照: 読めない行(項目が 7 つ)を足すと検出する
+  assert.equal(exampleProblems(SIMPLE_EXAMPLE + '\na | b | c | d | e | f | g').length, 1);
+});
 
 test('簡易形式: 見本を項目ごとに読む', () => {
   const r = parseImport(read('simple_v1.txt'));
