@@ -8,7 +8,7 @@
 | `core/book.js` | 単語帳の全体の形(`Book`)と、それに対する操作(`moveKeys` `importIntoBook` `sessionsOf` `countBook`) |
 | `core/backup.js` | バックアップ形式の書き出し(`toBackup` `backupText`)と読み込み(`parseBackup` `readBackup`) |
 | `app/storage.js` | IndexedDB への保存・読み込み・復元・元に戻す(`openStorage`)。ブラウザの API を使うので `core/` の外 |
-| `Tools/Dev/serve.mjs` | ブラウザで確かめるための静的サーバー |
+| `Tools/Dev/serve.mjs` | ブラウザで確かめるための静的サーバー。第 2 引数に `0.0.0.0` を渡すと同じ Wi-Fi の実機から開ける(`.git`・`Temp`・`node_modules` は配らない) |
 | `tests/core/fixtures/backup/` | バックアップの各版の見本 |
 
 進捗はここに書かない。[50_Tasks.md](50_Tasks.md) を見る(UD-3)。
@@ -128,3 +128,20 @@ flowchart LR
 3. `http://127.0.0.1:8765/` を開き(別オリジン)、`load` が空の単語帳を返すことを確かめる(陽性対照: 別の IndexedDB であること)。
    別の単語帳を `save` してから、2 の文字列を `parseBackup` → `countBook` → `restore` の順に通す
 4. `load` の `countBook` が、手順 2 で書き出した単語帳の `countBook` と一致すること・`undoRestore` で 3 で保存した単語帳に戻ること・リロード後も残ることを確かめる
+
+### 実機での受け渡しの手順(PC のブラウザ → iPhone の Safari)
+
+[50_Tasks.md](50_Tasks.md) の T-5.2 の完了条件を確かめる手順。開く URL は README の「開く場所」
+(GitHub Pages か、`node Tools/Dev/serve.mjs 8765 0.0.0.0` で同じ Wi-Fi に出した PC)。
+
+1. **PC のブラウザ(Chrome)で開く。** 語を 5 語ほど足し、学習で何問か解き、1 語に印を付ける。
+   さらに 1 語を削除する(消した語の記録も記録件数に数えることを確かめるため)
+2. 「設定」→「書き出す」。画面に出た「語数・記録件数・印」を控える。保存されたファイルを iPhone へ送る(AirDrop など)
+3. **iPhone の Safari で同じ URL を開く。** 別の単語帳にするため、1 語だけ足しておく(陽性対照: PC とは別の保存であること。
+   PC の語が見えていたら、同じ保存を見ているので手順をやり直す)
+4. 「設定」→「バックアップを読み込む」→ 2 のファイルを選ぶ。確かめること:
+   - ファイルを選べる(グレーになって選べないなら、`accept` の指定の問題として記録する)
+   - 「読み込むファイル」の列の語数・記録件数・印が、2 で控えた値と一致する。「今の単語帳」の列は 3 の単語帳(語数 1)
+5. 「置き換える」。単語帳タブの語が PC と同じになり、Safari を閉じて開き直しても残ることを確かめる
+6. 「設定」→「読み込む前の単語帳に戻す」。3 で足した 1 語だけの単語帳に戻ることを確かめる
+7. 途中で気づいたこと(ファイルの保存先・画面の崩れ・キーボードで欄が隠れるなど)は [50_Tasks.md](50_Tasks.md) の未決定事項へ書く
