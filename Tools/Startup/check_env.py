@@ -52,7 +52,8 @@ def check_tsc() -> None:
 
 
 def check_playwright() -> None:
-    """Screen tests (npm run e2e) need @playwright/test and the browser named by PW_CHANNEL (default: msedge)."""
+    """Screen tests (npm run e2e) need @playwright/test and a browser: the binary at PW_EXECUTABLE if set,
+    else the channel named by PW_CHANNEL (default: msedge; other channels are not checked here)."""
     if not (ROOT / "node_modules" / "@playwright" / "test").exists():
         add("WARN", "playwright", "@playwright/test not installed (run npm install; needed for npm run e2e)")
         return

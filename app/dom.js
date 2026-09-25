@@ -9,6 +9,7 @@
 
 /**
  * 各タブの render が受け取る文脈。単語帳を変えるときは必ず commit を通す(保存と「元に戻す」をここで揃える)。
+ * バックアップからの復元とその取り消しだけは restore / undoRestore を通す。
  * @typedef {object} Ctx
  * @property {HTMLElement} root タブの中身を描く場所
  * @property {Book} book 今の単語帳

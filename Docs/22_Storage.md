@@ -78,7 +78,7 @@
 ```mermaid
 flowchart LR
   F[バックアップのファイル] --> P[parseBackup]
-  P --> S[書き出した日時・語数・記録件数・印の数と警告を見せる]
+  P --> S[countBook の件数・書き出した日時・警告を見せる]
   S --> R[restore]
   R --> U[(直前の単語帳を退避)]
   R --> B[(単語帳を置き換える)]

@@ -28,8 +28,7 @@ FAIL があれば本人に伝えて止まる。
 
 現時点では無い(サーバー・MCP・外部 API に依存しない静的アプリのため)。
 ブラウザで確かめるときの静的サーバーは `node Tools/Dev/serve.mjs`(127.0.0.1:8765)。
-画面の確認(`npm run e2e`)に要るもの(`@playwright/test` と Edge)は段 1 の `check_env.py` が見る。WARN なら画面の確認は回せない。
-Edge の無い端末では `PW_CHANNEL` か `PW_EXECUTABLE`(Chromium の実行ファイルのパス)を設定する(`Docs/23_Screens.md` §6)。
+画面の確認(`npm run e2e`)に要るもの(`@playwright/test` と使うブラウザ。ブラウザの選び方は `Docs/23_Screens.md` §6)は段 1 の `check_env.py` が見る。WARN なら画面の確認は回せない。
 
 ---
 

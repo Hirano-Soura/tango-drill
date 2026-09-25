@@ -1,4 +1,5 @@
-// 画面の入口: 保存層を開き、5 つのタブを切り替える。単語帳を変える操作はすべて commit を通す。
+// 画面の入口: 保存層を開き、5 つのタブを切り替える。単語帳を変える操作は commit を通す
+// (バックアップからの復元とその取り消しだけは restore / undoRestore を通す)。
 // 「元に戻す」は直前の追加・編集・削除・取り込みの確定だけを 1 段取り消す(次に単語帳を変えると消える)。
 
 import { openStorage } from './storage.js';
@@ -70,10 +71,20 @@ async function main() {
     get canUndoRestore() { return app.restoreUndo; },
     async undoRestore() {
       await storage.undoRestore();
-      const back = await storage.load(today());
-      app.book = back.book;
-      app.undo = null;
+      // 退避はもう消えている。このあと読み直しに失敗しても、戻すボタンを出し続けない
       app.restoreUndo = false;
+      app.undo = null;
+      let back;
+      try {
+        back = await storage.load(today());
+      } catch (e) {
+        // 画面の単語帳と保存した中身がずれたまま続けない(次の保存で上書きして失うため)
+        nav.onclick = null;
+        toast.hidden = true;
+        showFatal(e);
+        return;
+      }
+      app.book = back.book;
       app.note = back.warnings.length ? '保存してある単語帳を読むときの注意: ' + back.warnings.join(' / ') : '';
       render();
     },
@@ -127,8 +138,15 @@ async function main() {
   render();
 }
 
-main().catch((e) => {
-  // 保存してある単語帳が読めないときも、空の単語帳として続けない(上書きして失うため)
+/**
+ * 保存してある単語帳が読めないときの画面。空の単語帳として続けない(上書きして失うため)。
+ * @param {unknown} e
+ */
+function showFatal(e) {
+  content.onclick = null;
+  content.onchange = null;
   content.innerHTML = `<div class="panel"><h2>単語帳を開けませんでした</h2><p class="msg err">${esc(e instanceof Error ? e.message : String(e))}</p>
     <p class="hint">アプリを更新してから開き直してください。データは消していません。</p></div>`;
-});
+}
+
+main().catch(showFatal);
