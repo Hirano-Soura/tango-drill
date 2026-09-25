@@ -149,8 +149,10 @@ test('当て先が決められない語: 既定では取り込まず、選べば
   assert.deepEqual(p.rows[0].previews?.map((x) => [x.target, x.conflicts.map((c) => c.field)]), [['secure|形', ['ja']], ['secure|動', ['ja']]]);
   assert.deepEqual(applyImport(existing, confirmPlan(p)).words, existing);
   const toVerb = applyImport(existing, confirmPlan(p, { 1: { target: 'secure|動' } }));
-  assert.equal(toVerb.updated, 1);
+  assert.equal(toVerb.updated, 0, '食い違いを残しただけなので、変わった語は無い');
   assert.equal(toVerb.words[3].ja, '確保する', '食い違う意味は上書きしない');
+  const note = plan(existing, 'secure | | | | | 補足');
+  assert.equal(applyImport(existing, confirmPlan(note, { 1: { target: 'secure|動' } })).updated, 1);
   assert.equal(applyImport(existing, confirmPlan(p, { 1: 'add' })).words.length, 5);
 });
 
@@ -168,7 +170,19 @@ test('当て先の決まらない語で選んだ当て先が、他の行の当�
   const p = plan(existing, 'secure | 動 | 確保する\nsecure | | 守る');
   assert.deepEqual(p.rows.map((r) => r.action), ['same', 'ambiguous']);
   assert.throws(() => confirmPlan(p, { 2: { target: 'secure|動' } }), /重なります/);
-  assert.equal(applyImport(existing, confirmPlan(p, { 2: { target: 'secure|形' } })).updated, 1);
+  assert.equal(applyImport(existing, confirmPlan(p, { 2: { target: 'secure|形' } })).updated, 0, '意味が食い違うだけで変わらない');
+});
+
+test('更新の数は中身が変わった語だけを数える(食い違いを残しただけの行は 0。画面は 0 件なら保存しない)', () => {
+  const existing = book();
+  const p = plan(existing, 'allocate | 動 | 配分する');
+  assert.equal(p.rows[0].action, 'merge');
+  const kept = applyImport(existing, confirmPlan(p));
+  assert.deepEqual([kept.added, kept.updated], [0, 0]);
+  assert.deepEqual(kept.words, existing);
+  // 陽性対照: 上書きを選べば変わり、1 と数える
+  const over = applyImport(existing, confirmPlan(p, { 1: 'overwrite' }));
+  assert.deepEqual([over.updated, over.words[0].ja], [1, '配分する']);
 });
 
 test('入力の中の重複・変わらない語・読めない行は取り込まない', () => {

@@ -76,7 +76,7 @@ const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
  * @property {{ from: string, to: string }[]} rekeys 品詞が埋まって鍵が変わった語(記録の付け替えに使う)
  * @property {string[]} addedKeys 新しく足した語の鍵(追加日を付けるのに使う)
  * @property {number} added
- * @property {number} updated
+ * @property {number} updated 中身が実際に変わった既存の語の数(食い違いを残しただけの行は数えない)
  */
 
 /** planImport が作った確認表。モジュールの外からは足せない */
@@ -326,8 +326,11 @@ export function applyImport(existing, confirmedPlan) {
     else if (row.action !== 'merge') continue;
     const i = target === undefined ? undefined : index.get(target);
     if (i === undefined) continue;
+    const merged = mergeWord(words[i], row.word, c === 'overwrite');
+    // 食い違いだけで上書きを選ばなかった行は何も変えない。更新の数に入れない
+    if (sameWord(merged, words[i])) continue;
     const before = keyOf(words[i]);
-    words[i] = mergeWord(words[i], row.word, c === 'overwrite');
+    words[i] = merged;
     const after = keyOf(words[i]);
     if (after !== before) {
       if (index.has(after)) throw new Error(`${before} の品詞を埋めると、既にある ${after} と重なります`);
@@ -348,6 +351,19 @@ function cloneWord(w) {
   const out = { ...w };
   if (w.tags) out.tags = [...w.tags];
   return out;
+}
+
+/**
+ * 2 つの語の中身が同じか(項目の並び順は問わない)。
+ * @param {Word} a
+ * @param {Word} b
+ * @returns {boolean}
+ */
+function sameWord(a, b) {
+  const ra = /** @type {Record<string, unknown>} */ (a);
+  const rb = /** @type {Record<string, unknown>} */ (b);
+  const ka = Object.keys(ra);
+  return ka.length === Object.keys(rb).length && ka.every((k) => JSON.stringify(ra[k]) === JSON.stringify(rb[k]));
 }
 
 /**

@@ -1,30 +1,7 @@
 // T-5: 追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す を画面で通す。
 // 編集で例文を消すと和訳と出どころも消えること(Docs/20_ImportFormat.md §4)は、保存された中身で確かめる。
 import { test, expect } from '@playwright/test';
-
-/** @typedef {import('@playwright/test').Page} Page */
-
-/**
- * 保存層から今の単語帳を読む(画面を通さずに保存された中身を確かめる)。
- * @param {Page} page
- */
-async function storedBook(page) {
-  return page.evaluate(async () => {
-    // ブラウザの中で、配信している保存層をそのまま読み込む(パスはページの URL から見たもの)
-    const path = '/app/storage.js';
-    const { openStorage } = /** @type {typeof import('../../app/storage.js')} */ (await import(path));
-    const s = await openStorage(indexedDB);
-    const { book } = await s.load('2000-01-01');
-    s.close();
-    return book;
-  });
-}
-
-/**
- * @param {Page} page
- * @param {string} name
- */
-const tab = (page, name) => page.getByRole('tab', { name, exact: true });
+import { storedBook, tab, fits as fitsOn } from './helpers.js';
 
 test('追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す', async ({ page }) => {
   await page.goto('/');
@@ -38,7 +15,7 @@ test('追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す', asyn
   await page.getByLabel('例文', { exact: true }).fill('They allocated funds to each team.');
   await page.getByLabel('例文の和訳').fill('彼らは各チームに資金を割り当てた。');
   await page.getByRole('button', { name: '追加する' }).click();
-  await expect(page.locator('#content .msg')).toContainText('「allocate」を追加しました');
+  await expect(page.locator('#add-msg')).toContainText('「allocate」を追加しました');
   await expect(page.getByLabel('見出し語(英語)')).toHaveValue('');
 
   // 学習: 1 語でも内蔵語彙で 4 択になる(Docs/21_Quiz.md §1 の few)
@@ -111,7 +88,7 @@ test('4 択を作れない問題はカードで出し、記録せず、前へ戻
     await page.getByLabel('見出し語(英語)').fill(en);
     await page.getByLabel('意味').fill(ja);
     await page.getByRole('button', { name: '追加する' }).click();
-    await expect(page.locator('#content .msg')).toContainText(`「${en}」を追加しました`);
+    await expect(page.locator('#add-msg')).toContainText(`「${en}」を追加しました`);
   }
   await tab(page, '学習').click();
   await page.getByRole('button', { name: '始める' }).click();
@@ -146,10 +123,7 @@ test('スマホ幅でも、どのタブも横にはみ出さない', async ({ pa
   await page.getByLabel('意味').fill('年次会議の組織委員会を代表して、とても長い訳語がここに入る場合');
   await page.getByLabel('例文', { exact: true }).fill('Averyveryverylongwordwithoutanyspacesthatcouldoverflowthelayoutonphones.');
   await page.getByRole('button', { name: '追加する' }).click();
-  const fits = async (/** @type {string} */ where) => {
-    const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
-    expect(sw, where).toBeLessThanOrEqual(iw);
-  };
+  const fits = (/** @type {string} */ where) => fitsOn(page, where);
   for (const name of ['学習', '単語帳', '追加', '記録', '設定']) {
     await tab(page, name).click();
     await fits(`${name} タブ`);
@@ -178,7 +152,7 @@ test('既にある語を追加しようとすると、足さずに編集へ案�
     await page.getByLabel('意味').fill('安全な');
     await page.getByRole('button', { name: '追加する' }).click();
   }
-  await expect(page.locator('#content .msg.err')).toContainText('単語帳から編集');
+  await expect(page.locator('#add-msg.err')).toContainText('単語帳から編集');
   const book = await storedBook(page);
   expect(book.words).toHaveLength(1);
 });

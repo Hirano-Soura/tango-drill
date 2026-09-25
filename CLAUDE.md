@@ -72,7 +72,7 @@ FAIL があれば本人に伝えて止まる。
 | ID | 内容 | 破った場合 | 検査手段 |
 | --- | --- | --- | --- |
 | `INV-1` | 学習記録・単語を外部へ送信しない | 個人情報を扱わない前提が崩れ、授業で使えなくなる | 機械検査(`doc_audit.py` の `INV-1 no send`。配布するコードに出る送信 API と外部 URL を、同じファイルの許可リスト `INV1_ALLOW` と照合) |
-| `INV-2` | 取り込みは必ず確認表を経てから保存する | AI の誤出力で単語帳が壊れる | `core/` の関門(確定した確認表しか保存用の一覧にしない)は挙動テスト(`tests/core/importPlan.test.js`)。画面が確認表を通すことは T-5.1 で Playwright。追加タブで手で入れる 1 語も確認表を通し、「足す」行だけを確定する(`addOneWord`。`tests/core/book.test.js`)。バックアップの読み込みは語の取り込みではなく、確認表を通さずに件数を見せて置き換える(`Docs/22_Storage.md` §3)。バックアップを語の取り込みに渡すと拒否することは挙動テスト(`tests/core/backup.test.js`) |
+| `INV-2` | 取り込みは必ず確認表を経てから保存する | AI の誤出力で単語帳が壊れる | `core/` の関門(確定した確認表しか保存用の一覧にしない)は挙動テスト(`tests/core/importPlan.test.js`)。画面が確認表を通すことは Playwright(`tests/e2e/import.spec.js`)。追加タブで手で入れる 1 語も確認表を通し、「足す」行だけを確定する(`addOneWord`。`tests/core/book.test.js`)。バックアップの読み込みは語の取り込みではなく、確認表を通さずに件数を見せて置き換える(`Docs/22_Storage.md` §3)。バックアップを語の取り込みに渡すと拒否することは挙動テスト(`tests/core/backup.test.js`) |
 | `INV-3` | 取り込み形式とバックアップ形式は版を持ち、過去の版をすべて読める | 利用者のバックアップが読めなくなる | 挙動テスト(`tests/core/importVersions.test.js` と `tests/core/backup.test.js` が各版の見本を読ませる) |
 | `INV-4` | 語の同一性は `見出し語 + 品詞` | 同綴り別品詞の記録が混ざる | 挙動テスト(`tests/core/word.test.js`、取り込みでの重複は `tests/core/importPlan.test.js`、バックアップの中の重複と `duplicateKeys` は `tests/core/backup.test.js` と `tests/core/book.test.js`) |
 | `INV-5` | 内蔵語彙は誤答にだけ使い、問題には出さない | 登録していない語が出題される | 挙動テスト(誤答の側は `tests/core/distractors.test.js`、出題集合の側は `tests/core/review.test.js`。どちらも内蔵語彙を 1 件混ぜた入力を検出する陽性対照つき。単語帳から作った回の出題集合で違反が無いことは `tests/core/book.test.js`) |

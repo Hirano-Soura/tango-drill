@@ -60,6 +60,15 @@
   .empty{color:var(--sub);text-align:center;margin-top:48px}
   .star{border:none;background:none;cursor:pointer;color:#9ca3af;font-size:18px;padding:0 2px;line-height:1}
   .star.on{color:var(--star)}
+  .prow{grid-template-columns:1fr}
+  .prow .ops{flex-direction:row;flex-wrap:wrap}
+  .prow select{max-width:100%}
+  .act{display:inline-block;font-size:11.5px;border-radius:10px;padding:0 8px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
+  .act.a-add{background:var(--okbg);border-color:var(--ok);color:var(--ink)}
+  .act.a-merge,.act.a-ambiguous{background:var(--warnbg);border-color:var(--warnbd);color:var(--warnfg)}
+  .act.a-error{background:var(--ngbg);border-color:var(--ng);color:var(--ink)}
+  .conf,.warns{margin:2px 0;padding-left:1.2em;font-size:13px;overflow-wrap:anywhere}
+  .warn{color:var(--warnfg)}
   .kind{display:inline-block;font-size:11px;border-radius:10px;padding:0 7px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
   .kind.ph{background:var(--phbg);border-color:var(--phbd);color:var(--phfg)}
   .tr{display:inline-block;font-size:10.5px;border-radius:8px;padding:0 6px;border:1px solid var(--line);color:var(--sub)}
