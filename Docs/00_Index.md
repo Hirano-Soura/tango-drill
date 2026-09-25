@@ -27,5 +27,7 @@
 | 文書 | 理由 |
 | --- | --- |
 | `README.md` | 利用者向けの操作手順(CLAUDE.md §2 の読み替え) |
+| `BRANCHING.md` | 今の管理者向け: `main` を守り、ブランチ → PR → 承認で統合する運用へ切り替える手順(引き継ぎの段階 1。`PUBLISHING.md` と組) |
+| `PUBLISHING.md` | 先生向け: 個人アカウントから学校の Organization への公開の引き継ぎ手順 |
 | `CLAUDE.md` | Claude Code への指示(差分のみ) |
 | `.claude/agents/tango-drill-doc-audit.md` | 意味の齟齬を監査するサブエージェントの定義 |
