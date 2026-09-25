@@ -38,3 +38,6 @@ node Tools/Dev/serve.mjs
 ```bash
 npm run e2e
 ```
+
+Edge の無い端末では、別のブラウザを指定する(`PW_CHANNEL=chrome npm run e2e`)か、
+入っている Chromium の実行ファイルを指定する(`PW_EXECUTABLE=<Chromium のパス> npm run e2e`)。

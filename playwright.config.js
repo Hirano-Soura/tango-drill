@@ -2,10 +2,16 @@
 // Usage: npm run e2e   Report: Temp/tango-drill_e2e.json (+ list output on the console).
 // The browser is the Edge installed on the machine (no browser download). Set PW_CHANNEL to use another
 // installed channel (e.g. chrome), or PW_CHANNEL=chromium after `npx playwright install chromium`.
+// PW_EXECUTABLE points at a Chromium binary directly (e.g. a preinstalled one whose revision differs
+// from what this Playwright version expects); it overrides PW_CHANNEL.
 // Keep this file ASCII-only (UE-1).
 import { defineConfig } from '@playwright/test';
 
 const channel = process.env.PW_CHANNEL ?? 'msedge';
+const executablePath = process.env.PW_EXECUTABLE;
+const browser = executablePath
+  ? { launchOptions: { executablePath } }
+  : channel === 'chromium' ? {} : { channel };
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -14,7 +20,7 @@ export default defineConfig({
   reporter: [['list'], ['json', { outputFile: 'Temp/tango-drill_e2e.json' }]],
   use: {
     baseURL: 'http://127.0.0.1:8766',
-    ...(channel === 'chromium' ? {} : { channel }),
+    ...browser,
     screenshot: 'only-on-failure',
   },
   projects: [

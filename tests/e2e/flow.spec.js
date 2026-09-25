@@ -146,12 +146,16 @@ test('スマホ幅でも、どのタブも横にはみ出さない', async ({ pa
 
 test('既にある語を追加しようとすると、足さずに編集へ案内する(INV-4)', async ({ page }) => {
   await page.goto('/');
-  for (let i = 0; i < 2; i++) {
+  const addSecure = async () => {
     await page.getByLabel('見出し語(英語)').fill('secure');
     await page.getByLabel('品詞').fill('形');
     await page.getByLabel('意味').fill('安全な');
     await page.getByRole('button', { name: '追加する' }).click();
-  }
+  };
+  await addSecure();
+  // 1 回目の保存と描き直しを待つ(待たないと、描き直しが 2 回目の入力の途中で欄を空にすることがある)
+  await expect(page.locator('#add-msg')).toContainText('「secure」を追加しました');
+  await addSecure();
   await expect(page.locator('#add-msg.err')).toContainText('単語帳から編集');
   const book = await storedBook(page);
   expect(book.words).toHaveLength(1);

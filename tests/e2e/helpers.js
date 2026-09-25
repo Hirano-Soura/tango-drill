@@ -20,6 +20,22 @@ export async function storedBook(page) {
 }
 
 /**
+ * 保存層へ単語帳をそのまま置く(記録の付いた単語帳を画面の操作なしで用意する)。置いたあとは開き直す。
+ * @param {Page} page
+ * @param {import('../../core/book.js').Book} book
+ */
+export async function seedBook(page, book) {
+  await page.evaluate(async (b) => {
+    const path = '/app/storage.js';
+    const { openStorage } = /** @type {typeof import('../../app/storage.js')} */ (await import(path));
+    const s = await openStorage(indexedDB);
+    await s.save(b);
+    s.close();
+  }, book);
+  await page.reload();
+}
+
+/**
  * @param {Page} page
  * @param {string} name
  */

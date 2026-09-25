@@ -16,6 +16,9 @@
  * @property {string} today 今日(YYYY-MM-DD)
  * @property {(next: Book, undoLabel?: string) => Promise<void>} commit 保存して描き直す。undoLabel を渡すと「元に戻す」を出す
  * @property {(next: Settings) => Promise<void>} setSettings
+ * @property {(next: Book) => Promise<void>} restore バックアップで単語帳の全体を置き換える。直前の単語帳は次の復元まで退避する(Docs/22_Storage.md §3)
+ * @property {boolean} canUndoRestore 復元の直前の単語帳が退避してあるか
+ * @property {() => Promise<void>} undoRestore 退避した単語帳に戻す。復元のあとの変更は消える
  * @property {(tab: TabId) => void} go
  * @property {() => void} rerender
  */

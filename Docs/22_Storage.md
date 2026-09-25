@@ -116,7 +116,7 @@ flowchart LR
 | 形式・往復・読めないものの扱い | `tests/core/backup.test.js`(陽性対照つき) |
 | 回・取り込みの反映・鍵の付け替え | `tests/core/book.test.js` |
 | 保存・復元・元に戻す | `tests/app/storage.test.js`(IndexedDB は `fake-indexeddb` で代える) |
-| 実際のブラウザでの往復 | 下の手順(別オリジンは別の IndexedDB を持つので、別のブラウザの代わりになる)。ファイルの受け渡しを画面で行う確認は [50_Tasks.md](50_Tasks.md) の T-5.2 |
+| 実際のブラウザでの往復 | 下の手順(別オリジンは別の IndexedDB を持つので、別のブラウザの代わりになる)。ファイルの受け渡しを画面で行う確認は [23_Screens.md](23_Screens.md) §6(Playwright。別のブラウザコンテキストへ渡す)。別の製品のブラウザ(iOS Safari)との受け渡しは [50_Tasks.md](50_Tasks.md) の T-5.2 |
 
 ### 実際のブラウザでの往復の手順
 

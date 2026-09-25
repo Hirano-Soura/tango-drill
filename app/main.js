@@ -36,6 +36,7 @@ async function main() {
     /** @type {TabId} */ tab: loaded.book.words.length ? 'study' : 'add',
     /** @type {{ label: string, book: Book } | null} */ undo: null,
     /** @type {string} */ note: loaded.warnings.length ? '保存してある単語帳を読むときの注意: ' + loaded.warnings.join(' / ') : '',
+    restoreUndo: await storage.canUndo(),
   };
 
   /** @type {Ctx} */
@@ -55,6 +56,25 @@ async function main() {
     async setSettings(next) {
       await storage.saveSettings(next);
       app.settings = next;
+      render();
+    },
+    // 復元の「元に戻す」は 1 段の「元に戻す」とは別に、保存層に退避して次の復元まで残す(Docs/22_Storage.md §3)
+    async restore(next) {
+      await storage.restore(next);
+      app.book = next;
+      app.undo = null;
+      app.restoreUndo = true;
+      app.note = '';
+      render();
+    },
+    get canUndoRestore() { return app.restoreUndo; },
+    async undoRestore() {
+      await storage.undoRestore();
+      const back = await storage.load(today());
+      app.book = back.book;
+      app.undo = null;
+      app.restoreUndo = false;
+      app.note = back.warnings.length ? '保存してある単語帳を読むときの注意: ' + back.warnings.join(' / ') : '';
       render();
     },
     go(tab) {

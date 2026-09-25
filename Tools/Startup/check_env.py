@@ -56,6 +56,13 @@ def check_playwright() -> None:
     if not (ROOT / "node_modules" / "@playwright" / "test").exists():
         add("WARN", "playwright", "@playwright/test not installed (run npm install; needed for npm run e2e)")
         return
+    exe = os.environ.get("PW_EXECUTABLE")
+    if exe:
+        if Path(exe).exists():
+            add("PASS", "playwright", f"@playwright/test installed, PW_EXECUTABLE={exe}")
+        else:
+            add("WARN", "playwright", f"PW_EXECUTABLE not found: {exe}")
+        return
     channel = os.environ.get("PW_CHANNEL", "msedge")
     if channel != "msedge":
         add("PASS", "playwright", f"@playwright/test installed, PW_CHANNEL={channel} (not checked here)")
@@ -68,7 +75,7 @@ def check_playwright() -> None:
     if found:
         add("PASS", "playwright", f"@playwright/test installed, Edge at {found}")
     else:
-        add("WARN", "playwright", "Edge not found: install it, or set PW_CHANNEL (e.g. chrome) for npm run e2e")
+        add("WARN", "playwright", "Edge not found: install it, or set PW_CHANNEL (e.g. chrome) or PW_EXECUTABLE (a Chromium binary) for npm run e2e")
 
 
 def check_claude_local() -> None:
