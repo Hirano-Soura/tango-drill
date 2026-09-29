@@ -24,16 +24,18 @@ const files = readdirSync(join(root, 'tests'), { recursive: true, encoding: 'utf
   .sort();
 const t = run(process.execPath, ['--test', '--test-reporter=tap', ...files]);
 const num = (k) => Number((t.out.match(new RegExp('^# ' + k + ' (\\d+)', 'm')) || [])[1] ?? -1);
-const tests = num('tests'), pass = num('pass'), failed = num('fail');
+const tests = num('tests'), pass = num('pass'), failed = num('fail'), todo = num('todo');
 if (t.code !== 0 || failed !== 0) {
-  fail++; lines.push(`[FAIL] behavior: exit=${t.code} tests=${tests} pass=${pass} fail=${failed}`);
+  fail++; lines.push(`[FAIL] behavior: exit=${t.code} tests=${tests} pass=${pass} fail=${failed} todo=${todo}`);
 } else if (tests <= 0) {
   fail++; lines.push('[FAIL] behavior: 0 tests ran (runner did not see any test file)');
 } else {
-  lines.push(`[PASS] behavior: tests=${tests} pass=${pass} fail=${failed}`);
+  lines.push(`[PASS] behavior: tests=${tests} pass=${pass} fail=${failed} todo=${todo}`);
 }
-const notOk = t.out.split('\n').filter((l) => /^\s*not ok /.test(l));
-for (const l of notOk) lines.push('    ' + l.trim());
+// A todo test is known unfinished work (e.g. a missing fixture): not a failure, but listed so it is not read as done (UV-1).
+const tap = t.out.split('\n');
+for (const l of tap.filter((x) => /^\s*not ok /.test(x) && !/# TODO\b/.test(x))) lines.push('    ' + l.trim());
+for (const l of tap.filter((x) => /^\s*(not )?ok .*# TODO\b/.test(x))) lines.push('[TODO] ' + l.trim().replace(/^(not )?ok \d+ - /, ''));
 
 // --- type ---
 // tsconfig.json: core/ without the DOM lib (Docs/52_Pitfalls.md P-1). tsconfig.app.json: app/ with DOM.

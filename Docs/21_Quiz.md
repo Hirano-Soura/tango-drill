@@ -78,7 +78,7 @@
 - 内蔵語彙のデータ(既存の単語データ。鍵で重複を除いて 495 語)は誤答にしか使わないので、
   `en` `pos` `ja` `kind` だけを持つ。例文・補足は同梱しない
 - 作り直すときは toeic-drill を手元に clone し、`node Tools/Builtin/make_builtin.mjs <toeic-drill の単語データのフォルダ>` を回す。
-  日ごとのファイル(`VOCAB_` で始まるもの)だけを読み、取り込みと同じ解析(`toeic-drill` 版の読み手)で正規化する。
+  読むファイルは移行と同じ(`Tools/Migrate/legacyFiles.mjs`。[22_Storage.md](22_Storage.md) §6)で、取り込みと同じ解析(`toeic-drill` 版の読み手)で正規化する。
   レポートは `Temp/tango-drill_builtin.txt`
 
 ## 5. 復習ミックス

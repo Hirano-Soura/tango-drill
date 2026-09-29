@@ -3,24 +3,24 @@
 // Usage (from the repository root):
 //   node Tools/Builtin/make_builtin.mjs <path to toeic-drill word-data folder>
 //
-// Reads every VOCAB_YYYY-MM-DD.js in that folder (the aggregate _all.js is skipped: it repeats them),
-// strips the window.__addVocab( ... ) wrapper, and parses each file with core/importFormat.js
+// Reads every VOCAB_YYYY-MM-DD.js in that folder with Tools/Migrate/legacyFiles.mjs (shared with the T-8 migration:
+// the aggregate _all.js is skipped and the window.__addVocab( ... ) wrapper removed), and parses each file with core/importFormat.js
 // (legacy toeic-drill format), so pos aliases and the phrase kind are normalized the same way as imports.
 // Words are deduplicated by keyOf (INV-4, first occurrence wins) and keep only the fields in
 // Docs/21_Quiz.md section 4. The output is a generated file: fix this script, not the output.
 // Report: Temp/tango-drill_builtin.txt (UV-4). Exit code 1 on any problem.
 // Keep this file ASCII-only (UE-1).
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseImport, LEGACY_FORMAT } from '../../core/importFormat.js';
 import { keyOf } from '../../core/word.js';
+import { readLegacyDays } from '../Migrate/legacyFiles.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const outPath = join(root, 'core', 'builtinVocab.js');
 const reportPath = join(root, 'Temp', 'tango-drill_builtin.txt');
 const FIELDS = ['en', 'pos', 'ja', 'kind'];
-const FILE = /^VOCAB_\d{4}-\d{2}-\d{2}\.js$/;
 
 const src = process.argv[2];
 const lines = [];
@@ -39,16 +39,14 @@ if (!src) {
   finish();
 }
 
-const files = readdirSync(src).filter((f) => FILE.test(f)).sort();
+const days = readLegacyDays(src);
+const files = days.map((d) => d.name);
 if (!files.length) { fail++; lines.push(`[FAIL] no VOCAB_*.js in ${src}`); finish(); }
 
 /** @type {Map<string, Record<string, string>>} */
 const byKey = new Map();
 let items = 0;
-for (const f of files) {
-  const text = readFileSync(join(src, f), 'utf8')
-    .replace(/^\s*window\.__addVocab\(/, '')
-    .replace(/\)\s*;?\s*$/, '');
+for (const { name: f, text } of days) {
   const r = parseImport(text);
   if (r.fatal || r.format !== LEGACY_FORMAT) {
     fail++; lines.push(`[FAIL] ${f}: ${r.fatal || 'format ' + r.format}`);
