@@ -157,7 +157,8 @@ export function bookFromLegacy(days, records = {}) {
  * 移行した単語帳を元の単語データと記録に突き合わせ、欠けているものを返す(空なら欠落なし)。
  * 書き出したファイルを読み直した単語帳に当てる(移行の途中の値ではなく、利用者が読み込むものを見る)。
  * 語: 単語データのどの項目の鍵も単語帳にあり、追加日がその項目の最も古い日であること。
- * 記録: 元の正誤・自己申告の記録のある語はどれも、直近の件(keep 件まで)が同じ並びで残っていること。
+ * 記録: 元の正誤・自己申告の記録のある語はどれも、直近の件(keep 件まで)が同じ並びで残っていること
+ * (配列でない・0/1 以外を含むため読み手が捨てた記録も、欠けたものとして返す)。
  * 印: 元の印のうち単語帳にある語のものが、すべて残っていること。
  * @param {Book} book
  * @param {MigrateResult} result bookFromLegacy の結果(sources と keyMap を使う)
@@ -181,9 +182,11 @@ export function missingAfterMigration(book, result, records = {}, keep = REVIEW.
   }
   for (const [name, table, moved] of /** @type {const} */ ([['正誤', records.hist, book.records.hist], ['自己申告', records.self, book.records.self]])) {
     for (const [k, v] of Object.entries(table ?? {})) {
-      if (!Array.isArray(v) || !v.length) continue;
+      if (Array.isArray(v) && !v.length) continue;
+      // 配列でない・0/1 以外を含む記録は読み手が捨てるので、ここで欠落として知らせる(黙って失わない)
       const got = moved[result.keyMap[k] ?? k];
-      if (!got || JSON.stringify(got) !== JSON.stringify(v.slice(-keep))) out.push(`${name}の記録 ${k} が移っていません`);
+      const want = Array.isArray(v) ? v.slice(-keep) : v;
+      if (!got || JSON.stringify(got) !== JSON.stringify(want)) out.push(`${name}の記録 ${k} が移っていません`);
     }
   }
   const starred = new Set(book.starred);

@@ -1,0 +1,13 @@
+[
+  {
+    "file": "claude_v1_session.txt",
+    "provider": "Claude",
+    "model": "claude-opus-5-5",
+    "via": "Claude Code のセッション内での返答",
+    "standIn": "アプリの解析規則を知っている文脈で書いた返答なので、寛容な解析の確かめにならない。claude.ai のアプリでの返答を採るまでの代用",
+    "date": "2026-09-29",
+    "promptVersion": "v1",
+    "examples": true,
+    "words": ["allocate", "itinerary", "reimburse", "tentative", "comply with", "on behalf of", "in advance", "secure", "estimate", "be eligible for"]
+  }
+]

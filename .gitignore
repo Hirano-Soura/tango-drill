@@ -8,6 +8,9 @@ Temp/
 test-results/
 playwright-report/
 
+# 既存アプリから取り出した個人の学習記録(Docs/22_Storage.md §6)。公開リポジトリに入れない
+toeic-drill-records.json
+
 # 端末ごとの import 行(CLAUDE.md §0 を参照)
 CLAUDE.local.md
 

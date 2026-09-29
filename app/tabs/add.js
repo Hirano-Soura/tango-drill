@@ -1,4 +1,4 @@
-// 追加タブ: 1 語ずつ手で足す欄と、まとめて貼り付ける取り込み(確認表。INV-2)。
+// 追加タブ: 1 語ずつ手で足す欄・AI への依頼文(app/aiView.js)・まとめて貼り付ける取り込み(確認表。INV-2)。
 // 取り込みは 貼り付け → 確認表を作る → 行ごとに選ぶ → 確定 の順でしか単語帳を変えない。
 // 確認表の規則は Docs/20_ImportFormat.md §4、画面の規則は Docs/23_Screens.md §3。
 
@@ -7,6 +7,7 @@ import { wordFields, readWordFields, posLine } from '../wordForm.js';
 import { addOneWord, importIntoBook } from '../../core/book.js';
 import { parseImport, SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
+import { aiHtml, bindAi, handleAiClick } from '../aiView.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/importPlan.js').Plan} Plan */
@@ -55,6 +56,7 @@ export function render(ctx) {
       </form>
       <p class="msg${isError ? ' err' : ''}" role="status" id="add-msg">${esc(message)}</p>
     </section>
+    ${aiHtml()}
     <section class="panel" id="import-panel">
       <h2>まとめて取り込む</h2>
       <p class="hint">AI の返答や表計算からのコピーを貼り付けるか、ファイルを選びます。
@@ -75,6 +77,7 @@ export function render(ctx) {
       <p class="msg${importIsError ? ' err' : ''}" role="status" id="import-msg">${esc(importMsg)}</p>
     </section>`;
   bindAdd(ctx);
+  bindAi(ctx);
   bindImport(ctx);
 }
 
@@ -147,6 +150,7 @@ function bindImport(ctx) {
   };
 
   ctx.root.onclick = async (e) => {
+    if (await handleAiClick(ctx, e)) return;
     const act = actionOf(e)?.dataset.action;
     if (act === 'example' && !text.value) {
       text.value = SIMPLE_EXAMPLE;

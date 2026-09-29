@@ -1,0 +1,12 @@
+```
+allocate | 動 | 割り当てる、配分する | The manager allocated additional funds to the marketing department. | 部長はマーケティング部に追加の資金を割り当てた。 | allocate A to B(AをBに割り当てる)
+itinerary | 名 | 旅程、旅程表 | Please review the itinerary for your business trip to Singapore. | シンガポール出張の旅程表をご確認ください。 | travel itinerary
+reimburse | 動 | 払い戻す、弁済する | The company will reimburse employees for travel expenses. | 会社は従業員に出張費を払い戻す。 | reimburse A for B／名詞形は reimbursement
+tentative | 形 | 仮の、暫定的な | We have set a tentative date for the product launch. | 製品発売の仮の日程を決めた。 | 副詞形は tentatively
+comply with | 動詞句 | ～に従う、～を遵守する | All staff must comply with the new safety regulations. | 全スタッフは新しい安全規則に従わなければならない。 | 名詞形は compliance with
+on behalf of | 前置詞句 | ～を代表して、～の代わりに | I am writing on behalf of the hiring committee. | 採用委員会を代表してご連絡しております。 | on A's behalf とも言う
+in advance | 副詞句 | 前もって、事前に | Please register for the seminar at least one week in advance. | セミナーには少なくとも1週間前までに登録してください。 | in advance of A(Aに先立って)
+secure | 動/形 | 確保する、獲得する、安全な | The company secured a contract with a major retailer. | その会社は大手小売業者との契約を獲得した。 | 形容詞では「安全な、確実な」
+estimate | 名/動 | 見積もり、見積もる | The contractor sent us an estimate for the renovation. | 業者が改装の見積もりを送ってきた。 | rough estimate(概算)
+be eligible for | 形容詞句 | ～の資格がある、～に適格である | Full-time employees are eligible for the annual bonus. | 正社員は年間賞与を受け取る資格がある。 | 名詞形は eligibility
+```

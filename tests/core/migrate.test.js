@@ -95,6 +95,17 @@ test('陽性対照: 語・追加日・記録・印が欠ければ突き合わせ
   assert.deepEqual(missingAfterMigration({ ...book, starred: ['secure|動'] }, r, RECORDS), ['印 apply|動詞 が移っていません']);
 });
 
+test('読み手が捨てた記録(0/1 以外を含む・配列でない)は、突き合わせが欠落として知らせる', () => {
+  const bad = { hist: { 'invoice|名': [1, 2], 'secure|形': 'x', 'itinerary|名': [] }, self: {} };
+  const r = bookFromLegacy(DAYS, bad);
+  assert.deepEqual(r.problems, []);
+  const book = /** @type {import('../../core/book.js').Book} */ (r.book);
+  assert.equal(book.records.hist['invoice|名'], undefined);
+  assert.ok(r.warnings.length > 0);
+  // 空の記録は移すものが無いので欠落にしない
+  assert.deepEqual(missingAfterMigration(book, r, bad), ['正誤の記録 invoice|名 が移っていません', '正誤の記録 secure|形 が移っていません']);
+});
+
 test('読めない日・日付の無い日・読めない語・鍵の衝突があれば単語帳を作らない', () => {
   const broken = { name: 'VOCAB_2026-07-20.js', date: '2026-07-20', text: '{"words":[}' };
   let r = bookFromLegacy([...DAYS, broken]);
