@@ -129,7 +129,7 @@ AI の返答をそのまま貼れるよう、次のものを読み飛ばす(寛�
 - `phrases` の語は、`kind` の値や品詞にかかわらず `phrase` にする
 - `words` も `phrases` も無いものは拒否する。どちらかがあれば、空でも読む(語 0 件の警告を出す)
 - 最上位の `date` `level` `theme` は使わずに捨てる。それ以外の未知の項目は捨てて警告を出す
-- 単語データのファイルを包む `window.__addVocab(...)` は外さない。移行(T-8)の側で外してから渡す
+- 単語データのファイルを包む `window.__addVocab(...)` は外さない。ファイルを読む側(`Tools/Migrate/legacyFiles.mjs` の `unwrapLegacy`。[22_Storage.md](22_Storage.md) §6)で外してから渡す
 
 ## 4. 確認表(INV-2)
 

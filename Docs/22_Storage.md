@@ -10,6 +10,7 @@
 | `app/storage.js` | IndexedDB への保存・読み込み・復元・元に戻す(`openStorage`)。ブラウザの API を使うので `core/` の外 |
 | `Tools/Dev/serve.mjs` | ブラウザで確かめるための静的サーバー。第 2 引数に `0.0.0.0` を渡すと同じ Wi-Fi の実機から開ける(`.git`・`Temp`・`node_modules` は配らない) |
 | `tests/core/fixtures/backup/` | バックアップの各版の見本 |
+| `core/migrate.js` / `Tools/Migrate/toeic_to_backup.mjs` | 既存アプリからの移行(§6) |
 
 進捗はここに書かない。[50_Tasks.md](50_Tasks.md) を見る(UD-3)。
 
@@ -145,3 +146,44 @@ flowchart LR
 5. 「置き換える」。単語帳タブの語が PC と同じになり、Safari を閉じて開き直しても残ることを確かめる
 6. 「設定」→「読み込む前の単語帳に戻す」。3 で足した 1 語だけの単語帳に戻ることを確かめる
 7. 途中で気づいたこと(ファイルの保存先・画面の崩れ・キーボードで欄が隠れるなど)は [50_Tasks.md](50_Tasks.md) の未決定事項へ書く
+
+## 6. 既存アプリ(toeic-drill)からの移行
+
+**既存アプリの単語データと記録からバックアップのファイルを作り、設定タブの「バックアップを読み込む」で入れる。**
+語の取り込み(確認表)では追加日と記録を運べないため([10_Design.md](10_Design.md) §1 の決定表)。
+
+| 実装 | 役割 |
+| --- | --- |
+| `core/migrate.js` | 単語データと記録から `Book` を作る(`bookFromLegacy`)・元と突き合わせる(`missingAfterMigration`) |
+| `Tools/Migrate/legacyFiles.mjs` | 単語データのフォルダから日ごとのファイルを選び、包み(`window.__addVocab(...)`)を外す(`readLegacyDays` `unwrapLegacy`)。内蔵語彙の生成([21_Quiz.md](21_Quiz.md) §4)と共用。包みはブラウザで読むための呼び出しなので `core/` には持ち込まない(INV-6) |
+| `Tools/Migrate/toeic_to_backup.mjs` | ファイルを読んでバックアップを書き出し、書いたファイルを読み直して突き合わせる。レポートは `Temp/tango-drill_migrate.txt` |
+| `tests/core/migrate.test.js` / `tests/tools/legacyFiles.test.js` | 下の規則と、突き合わせの陽性対照 / 読むファイルの選び方と包みの外し方 |
+
+### 規則
+
+| 対象 | 扱い |
+| --- | --- |
+| 語 | 日ごとのファイル(`VOCAB_YYYY-MM-DD.js`)を日付順に、取り込みと同じ読み手(`toeic-drill` 版。[20_ImportFormat.md](20_ImportFormat.md) §3)で読む。同じ鍵の語が複数の日にあれば、最も古い日の語を残す。読めない日・読めない語が 1 つでもあれば作らない |
+| 追加日 | ファイル名の日付。既存アプリの回(単語データのある日)と同じ束ね方になり、復習ミックスの「n 回前」がそのまま続く |
+| 記録(正誤・自己申告)と印 | 既存アプリの `localStorage`(`toeic_vocab_hist` / `toeic_vocab_self` / `toeic_vocab_weak`)の中身。既存アプリの鍵も `見出し語 + 品詞`(`keyOf` と同じ規則)なので、そのまま引く。読み手の正規化(品詞の別名など)で鍵が変わった語は新しい鍵へ移す。見出し語だけの古い鍵は、その見出し語の最も古い日の語に当てる(既存アプリが鍵の形を変えたときと同じ)。2 つの鍵が同じ語に当たれば作らない |
+| どの語にも当たらない記録 | 残して警告する(単語帳の記録は消した語の分も持てる。§1)。印は付けない |
+| 記録の検証 | 最後にバックアップの読み手(`readBackup`)に通す。0/1 以外を含む記録は捨てて警告し、直近 `KEEP` 件にする(保存・復元と同じ規則) |
+
+- ツールは、書いたファイルを `parseBackup` で読み直した単語帳を元に突き合わせる。単語データのどの項目も最も古い日の追加日で単語帳にあり、
+  元の正誤・自己申告の記録(直近 `KEEP` 件)と印がすべて移っていなければ FAIL にする。`--expect-words` で語数の食い違いも FAIL にできる
+- 読み込むと単語帳は丸ごと置き換わる(§3)。tango-drill に語を足したあとで移行するなら、先にバックアップを書き出しておく
+
+### 手順
+
+1. 既存アプリの記録を取り出す。既存アプリを開いているブラウザで、そのページの開発者ツールのコンソールに次を貼って実行する
+   (iOS Safari などコンソールの無いブラウザでは、先頭に `javascript:` を付けたものをブックマークの URL にして、既存アプリを開いた状態で選ぶ)。
+   `toeic-drill-records.json` が保存される。記録を移さないなら飛ばしてよい
+
+   ```js
+   (() => { const g = (k) => JSON.parse(localStorage.getItem(k) || '{}'); const d = { hist: g('toeic_vocab_hist'), self: g('toeic_vocab_self'), weak: g('toeic_vocab_weak') }; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d)], { type: 'application/json' })); a.download = 'toeic-drill-records.json'; document.body.append(a); a.click(); })();
+   ```
+
+2. リポジトリのルートで `node Tools/Migrate/toeic_to_backup.mjs <単語データのフォルダ> [toeic-drill-records.json] --expect-words 495` を回し、
+   `Temp/tango-drill_migrate.txt` が PASS であることと、出た件数(`counts shown when restoring`)を見る
+3. できた `Temp/tango-drill_migrated_backup.json` を端末へ渡し、設定タブの「バックアップを読み込む」で選ぶ。
+   確認に出る語数・記録件数・印の数が手順 2 の件数と一致したら「置き換える」
