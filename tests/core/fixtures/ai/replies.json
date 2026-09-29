@@ -1,10 +1,29 @@
 [
   {
-    "file": "claude_v1_session.txt",
+    "file": "chatgpt_v1.txt",
+    "provider": "ChatGPT",
+    "model": "不明(アプリの表示から控えていない)",
+    "via": "アプリ。返答をそのまま保存(コードブロックのコピーボタンで写したため、囲みの行は無い)",
+    "date": "2026-09-29",
+    "promptVersion": "v1",
+    "examples": true,
+    "words": ["allocate", "itinerary", "reimburse", "tentative", "comply with", "on behalf of", "in advance", "secure", "estimate", "be eligible for"]
+  },
+  {
+    "file": "claude_v1.txt",
     "provider": "Claude",
-    "model": "claude-opus-5-5",
-    "via": "Claude Code のセッション内での返答",
-    "standIn": "アプリの解析規則を知っている文脈で書いた返答なので、寛容な解析の確かめにならない。claude.ai のアプリでの返答を採るまでの代用",
+    "model": "不明(アプリの表示から控えていない)",
+    "via": "アプリ。返答をそのまま保存(コードブロックの囲みを含む)",
+    "date": "2026-09-29",
+    "promptVersion": "v1",
+    "examples": true,
+    "words": ["allocate", "itinerary", "reimburse", "tentative", "comply with", "on behalf of", "in advance", "secure", "estimate", "be eligible for"]
+  },
+  {
+    "file": "gemini_v1.txt",
+    "provider": "Gemini",
+    "model": "不明(アプリの表示から控えていない)",
+    "via": "アプリ。返答をそのまま保存(コードブロックの囲みを含む)",
     "date": "2026-09-29",
     "promptVersion": "v1",
     "examples": true,

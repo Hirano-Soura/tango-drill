@@ -1,0 +1,10 @@
+allocate | 動 | 割り当てる、配分する | The manager allocated more funds to the project. | 部長はそのプロジェクトにより多くの資金を割り当てた。 | allocate A to B「AをBに割り当てる」
+itinerary | 名 | 旅程、旅行日程 | Please check the itinerary before the business trip. | 出張前に旅程を確認してください。 | travel itinerary「旅行日程」
+reimburse | 動 | 払い戻す、返金する | The company will reimburse your travel expenses. | 会社はあなたの旅費を払い戻します。 | reimburse A for B「BについてAに払い戻す」
+tentative | 形 | 仮の、暫定的な | The meeting date is still tentative. | 会議の日程はまだ暫定的だ。 | tentative schedule「暫定的な予定」
+comply with | 動詞句 | ～に従う、～を遵守する | All employees must comply with the safety rules. | 全従業員は安全規則を遵守しなければならない。 | comply with regulations「規則を遵守する」
+on behalf of | 前置詞句 | ～を代表して、～に代わって | I am writing on behalf of the sales department. | 営業部を代表してこのメールを書いている。 | on behalf of A「Aを代表して」
+in advance | 副 | 前もって、事前に | Please make a reservation in advance. | 事前に予約してください。 | in advance of ～「～に先立って」
+secure | 動/形 | 確保する、安全な | We need to secure enough space for the event. | 私たちはイベントのために十分なスペースを確保する必要がある。 | secure a position「職を確保する」
+estimate | 名/動 | 見積もり、見積もる | The estimated cost is $5,000. | 見積費用は5,000ドルです。 | estimate the cost「費用を見積もる」
+be eligible for | 動詞句 | ～の資格がある、～を受ける資格がある | Employees are eligible for paid leave after one year. | 従業員は1年後に有給休暇を取得する資格がある。 | be eligible for A「Aを受ける資格がある」
