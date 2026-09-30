@@ -20,6 +20,7 @@ const SOURCE = {
   records: {
     hist: { 'allocate|動': [1, 0, 1], 'tentative|形': [0, 1] },
     self: { 'allocate|動': [1, 1, 1], 'tentative|形': [0, 0] },
+    last: { 'allocate|動': '2026-09-21T09:00:00.000Z' },
   },
   starred: ['itinerary|名'],
 };
@@ -29,7 +30,7 @@ const SOURCE = {
 const OTHER = {
   words: [{ en: 'tentative', pos: '形', ja: '仮の' }],
   added: { 'tentative|形': '2026-09-25' },
-  records: { hist: {}, self: {} },
+  records: { hist: {}, self: {}, last: {} },
   starred: [],
 };
 
@@ -54,7 +55,7 @@ test('書き出したファイルを別の端末で読み込むと、確認に�
   await dl.saveAs(saved);
   // 書き出したファイルの中身と名前をそのまま渡す(保存先のパスは試験名を含み、パスのままでは選べないことがあった)
   const file = { name: dl.suggestedFilename(), mimeType: 'application/json', buffer: await readFile(saved) };
-  expect(JSON.parse(file.buffer.toString('utf8')).format).toBe('tango-drill-backup/v1');
+  expect(JSON.parse(file.buffer.toString('utf8')).format).toBe('tango-drill-backup/v2');
   const source = await storedBook(src);
   await srcCtx.close();
 

@@ -77,7 +77,9 @@ test('「わからない」のあとに選んだものは記録に入らない(1
   // 2 段階クイズには前へ戻るボタンを出さない(解き直して二重に記録しない)
   await expect(page.getByRole('button', { name: '← 前へ' })).toHaveCount(0);
   const book = await storedBook(page);
-  expect(book.records).toEqual({ hist: { 'itinerary|': [0] }, self: { 'itinerary|': [0] } });
+  expect(book.records).toEqual({ hist: { 'itinerary|': [0] }, self: { 'itinerary|': [0] }, last: { 'itinerary|': expect.any(String) } });
+  // 最後に回答した日時は、記録した時刻(今)
+  expect(Math.abs(Date.parse(book.records.last?.['itinerary|'] ?? '') - Date.now())).toBeLessThan(60_000);
   await page.getByRole('button', { name: '次の問題 →' }).click();
   await expect(page.locator('.stem')).toHaveText('結果: 0 / 1');
 });

@@ -81,11 +81,12 @@ test('importIntoBook: 確定していない確認表は受け付けない(INV-2)
 test('T-4.1: 品詞の無い語に記録を付けてから品詞を埋める取り込みをすると、記録・追加日・印が新しい鍵に付く', () => {
   /** @type {Book} */
   let b = { words: [{ en: 'itinerary', ja: '旅程' }], added: { 'itinerary|': '2026-09-01' }, records: { hist: {}, self: {} }, starred: ['itinerary|'] };
-  b = { ...b, records: recordAnswer(recordAnswer(b.records, 'itinerary|', false, true), 'itinerary|', true, true) };
+  b = { ...b, records: recordAnswer(recordAnswer(b.records, 'itinerary|', false, true), 'itinerary|', true, true, '2026-09-10T00:00:00.000Z') };
   const r = importIntoBook(b, confirmed(b, 'itinerary | 名'), '2026-09-20');
   assert.deepEqual(r.book.words, [{ en: 'itinerary', pos: '名', ja: '旅程' }]);
   assert.deepEqual(r.book.records.hist, { 'itinerary|名': [0, 1] });
   assert.deepEqual(r.book.records.self, { 'itinerary|名': [1, 1] });
+  assert.deepEqual(r.book.records.last, { 'itinerary|名': '2026-09-10T00:00:00.000Z' });
   assert.deepEqual(r.book.added, { 'itinerary|名': '2026-09-01' });
   assert.deepEqual(r.book.starred, ['itinerary|名']);
 });
@@ -211,6 +212,21 @@ test('moveKeys: 正誤と自己申告は 1 組で置き換える(移す元に自
   const out = moveKeys(b, [{ from: 'itinerary|', to: 'itinerary|名' }]);
   assert.deepEqual(out.records.hist, { 'itinerary|名': [0, 1] });
   assert.deepEqual(out.records.self, {});
+});
+
+test('moveKeys: 最後の回答日時も正誤・自己申告と 1 組で移す(移す元に日時が無ければ、移し先に残っていた日時も消す)', () => {
+  const b = sample();
+  b.records = {
+    hist: { 'itinerary|': [0, 1], 'itinerary|名': [1], 'secure|形': [1] },
+    self: { 'itinerary|': [0, 1], 'itinerary|名': [1], 'secure|形': [1] },
+    last: { 'itinerary|名': '2026-08-01T00:00:00.000Z', 'secure|形': '2026-09-02T00:00:00.000Z' },
+  };
+  const out = moveKeys(b, [{ from: 'itinerary|', to: 'itinerary|名' }]);
+  assert.deepEqual(out.records.last, { 'secure|形': '2026-09-02T00:00:00.000Z' });
+  b.records = { ...b.records, last: { ...b.records.last, 'itinerary|': '2026-09-05T00:00:00.000Z' } };
+  assert.deepEqual(moveKeys(b, [{ from: 'itinerary|', to: 'itinerary|名' }]).records.last, {
+    'itinerary|名': '2026-09-05T00:00:00.000Z', 'secure|形': '2026-09-02T00:00:00.000Z',
+  });
 });
 
 test('moveKeys: 移す元に記録が無ければ、移し先に残っていた記録がそのまま付く', () => {

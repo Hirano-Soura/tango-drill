@@ -13,7 +13,7 @@ import { moveKeys, duplicateKeys } from './book.js';
 /** @typedef {import('./book.js').Rekey} Rekey */
 
 /** 書き出すときに使うバックアップの版 */
-export const CURRENT_BACKUP_FORMAT = BACKUP_FORMAT_PREFIX + 'v1';
+export const CURRENT_BACKUP_FORMAT = BACKUP_FORMAT_PREFIX + 'v2';
 
 /**
  * @typedef {object} ReadOptions
@@ -33,13 +33,16 @@ export const CURRENT_BACKUP_FORMAT = BACKUP_FORMAT_PREFIX + 'v1';
 
 /** バックアップの版ごとの読み手。過去の版の読み手を消さない(INV-3) */
 const READERS = /** @type {Record<string, (data: Record<string, unknown>, opts: ReadOptions) => BackupResult>} */ ({
-  'tango-drill-backup/v1': readV1,
+  'tango-drill-backup/v1': (data, opts) => readBook('tango-drill-backup/v1', data, opts, false),
+  'tango-drill-backup/v2': (data, opts) => readBook('tango-drill-backup/v2', data, opts, true),
 });
 
 /** 読めるバックアップの版のすべて(INV-3 のテストがこの一覧と見本を突き合わせる) */
 export const READABLE_BACKUP_FORMATS = Object.freeze(Object.keys(READERS));
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** 最後の回答日時の形(Date#toISOString の UTC 表記)。文字列の大小で前後を比べるので、この形だけを読む */
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const TOP_KEYS = ['format', 'exportedAt', 'words', 'added', 'records', 'starred'];
 
 /**
@@ -62,6 +65,7 @@ export function toBackup(book, exportedAt) {
     records: {
       hist: copyLists(book.records.hist),
       self: copyLists(book.records.self),
+      last: { ...book.records.last },
     },
     starred: book.starred.filter((k) => keys.has(k)),
   };
@@ -124,13 +128,15 @@ export function readBackup(data, opts) {
 }
 
 /**
- * tango-drill-backup/v1。項目は Docs/22_Storage.md §2。
+ * tango-drill-backup/v1 と v2。項目は Docs/22_Storage.md §2。
+ * 2 つの違いは records.last(最後に回答した日時)の有無だけ。v1 の records.last は未知の項目として無視する。
+ * @param {string} format
  * @param {Record<string, unknown>} data
  * @param {ReadOptions} opts
+ * @param {boolean} withLast records.last を読むか(v2)
  * @returns {BackupResult}
  */
-function readV1(data, opts) {
-  const format = 'tango-drill-backup/v1';
+function readBook(format, data, opts, withLast) {
   const warnings = Object.keys(data).filter((k) => !TOP_KEYS.includes(k)).map((k) => `未知の項目 ${k} を無視しました`);
 
   let exportedAt;
@@ -158,7 +164,7 @@ function readV1(data, opts) {
 
   const keys = new Set(words.map(keyOf));
   const added = readAdded(data.added, warnings);
-  const records = readRecords(data.records, warnings);
+  const records = readRecords(data.records, warnings, withLast);
   const starred = readStarred(data.starred, warnings);
 
   let book = moveKeys({ words, added, records, starred }, rekeys);
@@ -218,16 +224,45 @@ function readAdded(v, warnings) {
 /**
  * @param {unknown} v
  * @param {string[]} warnings
+ * @param {boolean} withLast records.last を読むか(v2)
  * @returns {import('./review.js').Records}
  */
-function readRecords(v, warnings) {
+function readRecords(v, warnings, withLast) {
   if (v === undefined) return emptyRecords();
   if (!isObject(v)) {
     warnings.push('records が { } ではないため無視しました');
     return emptyRecords();
   }
-  for (const k of Object.keys(v)) if (k !== 'hist' && k !== 'self') warnings.push(`未知の項目 records.${k} を無視しました`);
-  return { hist: readLists(v.hist, 'hist', warnings), self: readLists(v.self, 'self', warnings) };
+  const known = withLast ? ['hist', 'self', 'last'] : ['hist', 'self'];
+  for (const k of Object.keys(v)) if (!known.includes(k)) warnings.push(`未知の項目 records.${k} を無視しました`);
+  return {
+    hist: readLists(v.hist, 'hist', warnings),
+    self: readLists(v.self, 'self', warnings),
+    last: withLast ? readTimes(v.last, warnings) : {},
+  };
+}
+
+/**
+ * 鍵ごとの最後の回答日時(ISO 8601)。日時として読めない鍵の分だけ捨てる。
+ * @param {unknown} v
+ * @param {string[]} warnings
+ * @returns {Record<string, string>}
+ */
+function readTimes(v, warnings) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  if (v === undefined) return out;
+  if (!isObject(v)) {
+    warnings.push('records.last が { } ではないため無視しました');
+    return out;
+  }
+  let bad = 0;
+  for (const [k, t] of Object.entries(v)) {
+    if (typeof t === 'string' && ISO_TIME.test(t) && !Number.isNaN(Date.parse(t))) out[k] = t;
+    else bad++;
+  }
+  if (bad) warnings.push(`日時として読めない最後の回答日時 ${bad} 件を無視しました`);
+  return out;
 }
 
 /**

@@ -128,6 +128,6 @@ test('読めない日・日付の無い日・読めない語・鍵の衝突が�
 
 test('記録が無くても移行できる(記録は空)', () => {
   const r = bookFromLegacy(DAYS);
-  assert.deepEqual(r.book?.records, { hist: {}, self: {} });
+  assert.deepEqual(r.book?.records, { hist: {}, self: {}, last: {} });
   assert.deepEqual(r.book?.starred, []);
 });
