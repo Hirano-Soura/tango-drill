@@ -36,9 +36,11 @@ export const GROUP_ORDER = Object.freeze(['today', 'd1', 'd3', 'miss', 'few']);
  * 正誤の記録。語の鍵(INV-4)ごとに、古い順の配列で直近 KEEP 件まで持つ。
  * hist は 1 = 正解 / 0 = 誤答、self は第 1 段階の自己申告で 1 = わかる / 0 = わからない。
  * self は hist と同時に積むが、自己申告を導入する前の記録には対応する self が無い(hist の方が長くなりうる)。
+ * last は最後に回答した日時(ISO 8601)。この欄を入れる前(バックアップ v1 まで)の記録には無い。
  * @typedef {object} Records
  * @property {Readonly<Record<string, readonly number[]>>} hist
  * @property {Readonly<Record<string, readonly number[]>>} self
+ * @property {Readonly<Record<string, string>>} [last]
  */
 
 /**
@@ -56,7 +58,7 @@ export const GROUP_ORDER = Object.freeze(['today', 'd1', 'd3', 'miss', 'few']);
 
 /** @returns {Records} */
 export function emptyRecords() {
-  return { hist: {}, self: {} };
+  return { hist: {}, self: {}, last: {} };
 }
 
 /**
@@ -66,20 +68,25 @@ export function emptyRecords() {
  * @param {string} key 語の鍵(keyOf)
  * @param {boolean} ok 正解したか
  * @param {boolean} self 第 1 段階で「わかる」と申告したか
+ * @param {string} [at] 回答した日時(ISO 8601)。渡せば最後に回答した日時(last)を更新する。
+ *   既存アプリとの比較テストは渡さない(既存アプリは日時を持たない)
  * @returns {Records}
  */
-export function recordAnswer(records, key, ok, self) {
+export function recordAnswer(records, key, ok, self, at) {
   const push = (/** @type {readonly number[] | undefined} */ a, /** @type {number} */ v) => [...(a || []), v].slice(-REVIEW.KEEP);
+  const last = { ...records.last };
+  if (at !== undefined) last[key] = at;
   return {
     hist: { ...records.hist, [key]: push(records.hist[key], ok ? 1 : 0) },
     self: { ...records.self, [key]: push(records.self[key], self ? 1 : 0) },
+    last,
   };
 }
 
 /**
  * 2 段階クイズの第 1 段階で積む記録。「わからない」はこの時点で不正解が確定するので、ここで積む
  * (第 2 段階は正解を見るための表示で、記録しない)。「わかる」は第 2 段階で積むので null。
- * 判定表は Docs/23_Screens.md §4。
+ * 判定表は Docs/21_Quiz.md §6。
  * @param {boolean} self 「わかる」と申告したか
  * @returns {{ ok: boolean, self: boolean } | null}
  */

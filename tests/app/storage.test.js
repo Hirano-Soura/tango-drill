@@ -15,7 +15,7 @@ const NOW = '2026-09-25T09:00:00.000Z';
 const sample = () => ({
   words: [{ en: 'allocate', pos: '動', ja: '割り当てる' }, { en: 'itinerary', pos: '名', ja: '旅程' }],
   added: { 'allocate|動': '2026-09-17', 'itinerary|名': '2026-09-24' },
-  records: { hist: { 'allocate|動': [1, 0, 1], 'gone|名': [0] }, self: { 'allocate|動': [1, 1, 0] } },
+  records: { hist: { 'allocate|動': [1, 0, 1], 'gone|名': [0] }, self: { 'allocate|動': [1, 1, 0] }, last: { 'allocate|動': '2026-09-24T10:00:00.000Z' } },
   starred: ['itinerary|名'],
 });
 
@@ -23,7 +23,7 @@ const sample = () => ({
 const other = () => ({
   words: [{ en: 'tentative', pos: '形', ja: '仮の' }],
   added: { 'tentative|形': '2026-09-01' },
-  records: { hist: { 'tentative|形': [1] }, self: { 'tentative|形': [1] } },
+  records: { hist: { 'tentative|形': [1] }, self: { 'tentative|形': [1] }, last: {} },
   starred: [],
 });
 
@@ -135,6 +135,23 @@ test('保存してある中身はバックアップと同じ形で、バック�
   const r = readBackup(raw, { today: TODAY });
   assert.deepEqual(r.warnings, []);
   assert.deepEqual(r.book, sample());
+});
+
+test('INV-3: 前の版(v1)の形で保存してある単語帳を読め、次に保存すると今の版の形になる(記録は残り、最後の回答日時は無いまま)', async () => {
+  const factory = new IDBFactory();
+  (await open(factory)).close();
+  const v1 = { ...toBackup(other(), NOW), format: 'tango-drill-backup/v1', records: { hist: { 'tentative|形': [1] }, self: { 'tentative|形': [1] } } };
+  await rawPut(factory, 'book', v1);
+  const s = await open(factory);
+  const { book, warnings } = await s.load(TODAY);
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(book, other());
+  await s.save(book);
+  s.close();
+  const raw = /** @type {any} */ (await rawGet(factory, 'book'));
+  assert.equal(raw.format, CURRENT_BACKUP_FORMAT);
+  assert.notEqual(raw.format, 'tango-drill-backup/v1');
+  assert.deepEqual(raw.records, { hist: { 'tentative|形': [1] }, self: { 'tentative|形': [1] }, last: {} });
 });
 
 test('保存してある中身が読めなければ、空の単語帳として扱わずに知らせ、中身を上書きしない', async () => {

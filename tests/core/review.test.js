@@ -53,10 +53,19 @@ test('recordAnswer: 正誤と自己申告を同時に積み、直近 10 件だ�
   let r = emptyRecords();
   const before = r;
   for (let i = 0; i < 12; i++) r = recordAnswer(r, 'a|名', i % 3 !== 0, i % 2 === 0);
-  assert.deepEqual(before, { hist: {}, self: {} });
+  assert.deepEqual(before, { hist: {}, self: {}, last: {} });
   assert.equal(r.hist['a|名'].length, REVIEW.KEEP);
   assert.equal(r.self['a|名'].length, REVIEW.KEEP);
   assert.deepEqual(r.hist['a|名'], [1, 0, 1, 1, 0, 1, 1, 0, 1, 1]);
+});
+
+test('recordAnswer: 日時を渡すと最後の回答日時を上書きし、渡さなければ変えない(記録の前からある日時の無い語は無いまま)', () => {
+  let r = recordAnswer(emptyRecords(), 'a|名', true, true, '2026-09-30T01:00:00.000Z');
+  r = recordAnswer(r, 'a|名', false, true, '2026-09-30T02:00:00.000Z');
+  assert.deepEqual(r.last, { 'a|名': '2026-09-30T02:00:00.000Z' });
+  r = recordAnswer(r, 'b|名', true, true);
+  assert.deepEqual(r.last, { 'a|名': '2026-09-30T02:00:00.000Z' });
+  assert.deepEqual(recordAnswer({ hist: {}, self: {} }, 'a|名', true, true).last, {}, 'last の無い古い記録にも積める');
 });
 
 test('answerPairs: 自己申告の無い古い記録は、末尾から揃えて null にする', () => {

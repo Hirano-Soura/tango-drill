@@ -3,7 +3,7 @@
 // (tests/core/version.test.js が 3 か所の一致を検査する)。
 
 /** 今のバージョン(n.m.l。0 から始まる間は公開前の pre-release) */
-export const VERSION = '0.18.1';
+export const VERSION = '0.19.0';
 
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 

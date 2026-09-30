@@ -20,6 +20,7 @@ const OPTS = { today: TODAY };
  */
 const EVER_READABLE = {
   'tango-drill-backup/v1': 'tango-drill-backup_v1.json',
+  'tango-drill-backup/v2': 'tango-drill-backup_v2.json',
 };
 
 /** @param {string} name */
@@ -43,6 +44,7 @@ const sample = () => ({
   records: {
     hist: { 'allocate|動': [1, 0, 1], 'secure|形': [0], 'gone|名': [1, 1] },
     self: { 'allocate|動': [1, 1, 1], 'secure|形': [1] },
+    last: { 'allocate|動': '2026-09-23T09:00:00.000Z', 'gone|名': '2026-09-01T00:00:00.000Z' },
   },
   starred: ['secure|形'],
 });
@@ -71,9 +73,32 @@ for (const [format, file] of Object.entries(EVER_READABLE)) {
 }
 
 test('INV-3 陽性対照: 見本の版を新しい版に書き換えると、読めないと報告される', () => {
-  const r = parseBackup(read('tango-drill-backup_v1.json').replace('"tango-drill-backup/v1"', '"tango-drill-backup/v2"'), OPTS);
+  const r = parseBackup(read('tango-drill-backup_v2.json').replace('"tango-drill-backup/v2"', '"tango-drill-backup/v3"'), OPTS);
   assert.match(r.fatal ?? '', /新しいため読めません/);
   assert.equal(r.book, undefined);
+});
+
+test('v2 は最後の回答日時(records.last)を読む。v1 には無いので空になり、v1 に書かれていても未知の項目として無視する', () => {
+  assert.deepEqual(book(read('tango-drill-backup_v2.json')).records.last, {
+    'allocate|動': '2026-09-29T08:15:00.000Z', 'secure|動': '2026-09-20T03:00:00.000Z',
+  });
+  assert.deepEqual(book(read('tango-drill-backup_v1.json')).records.last, {});
+  const v1 = JSON.parse(read('tango-drill-backup_v1.json'));
+  v1.records.last = { 'allocate|動': '2026-09-29T08:15:00.000Z' };
+  const r = readBackup(v1, OPTS);
+  assert.deepEqual(r.book?.records.last, {});
+  assert.deepEqual(r.warnings, ['未知の項目 records.last を無視しました']);
+});
+
+test('v2 の読めない最後の回答日時は鍵ごとに捨てて警告する(文字列の大小で比べるので UTC の ISO 8601 だけを読む)', () => {
+  const data = JSON.parse(read('tango-drill-backup_v2.json'));
+  data.records.last['tentative|形'] = '2026-09-29 08:15';
+  data.records.last['itinerary|'] = 5;
+  // ミリ秒の無い形は、ミリ秒のある形と文字列で比べると同じ 1 秒の中で前後が逆になるので読まない
+  data.records.last['on behalf of A|前置詞句'] = '2026-09-29T08:15:00Z';
+  const r = readBackup(data, OPTS);
+  assert.deepEqual(Object.keys(r.book?.records.last ?? {}).sort(), ['allocate|動', 'secure|動']);
+  assert.deepEqual(r.warnings, ['日時として読めない最後の回答日時 3 件を無視しました']);
 });
 
 // --- 往復 ------------------------------------------------------------------------------
@@ -231,7 +256,7 @@ test('読み手の正規化で鍵が変わる語は、追加日・記録・印�
   assert.deepEqual(r.book, {
     words: [{ en: 'budget', pos: '名' }],
     added: { 'budget|名': '2026-09-01' },
-    records: { hist: { 'budget|名': [0, 1] }, self: { 'budget|名': [0, 1] } },
+    records: { hist: { 'budget|名': [0, 1] }, self: { 'budget|名': [0, 1] }, last: {} },
     starred: ['budget|名'],
   });
 });

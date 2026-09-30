@@ -1,24 +1,26 @@
-// 学習タブ: 復習ミックス(または全語)を、2 段階クイズかカードで解く。
+// 学習タブ: 復習ミックス(または出題順を選んだ語)を、2 段階クイズかカードで解く。途中で中断し、続きから再開できる。
 // 2 段階クイズは既存アプリと同じ: 第 1 段階で「わかる / わからない」を自己申告し、第 2 段階で 4 択 +
-// 「思い浮かべた訳が選択肢に無い」から選ぶ。判定と記録は core の stage1Record / stage2Judge(Docs/23_Screens.md §4)。
+// 「思い浮かべた訳が選択肢に無い」から選ぶ。判定と記録は core の stage1Record / stage2Judge(Docs/21_Quiz.md §6)。
 
 import { esc, actionOf } from '../dom.js';
 import { posLine } from '../wordForm.js';
 import { keyOf, isPhrase } from '../../core/word.js';
 import { sessionsOf } from '../../core/book.js';
-import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record, stage2Judge } from '../../core/review.js';
+import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record, stage2Judge, statOf } from '../../core/review.js';
+import { studyOrder } from '../../core/studyOrder.js';
 import { buildChoices, quizModes } from '../../core/distractors.js';
 import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
-import { shuffle } from '../../core/random.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/word.js').Word} Word */
 /** @typedef {import('../../core/review.js').Group} Group */
+/** @typedef {import('../../core/studyOrder.js').StudyOrder} StudyOrder */
 /** @typedef {import('../../core/distractors.js').ChoiceOk | import('../../core/distractors.js').ChoiceNg} Choice */
 /** @typedef {ReturnType<typeof stage2Judge>['verdict']} Verdict */
 
 /**
  * 解いている出題。2 段階クイズは前へ戻れない(答えた問題を解き直すと記録が二重になる)。
+ * 中断しても状態はそのまま残し、再開すると中断したところ(段階・選んだ選択肢を含む)から続ける。
  * @typedef {object} Quiz
  * @property {{ word: Word, group: Group | null }[]} items
  * @property {number} idx
@@ -30,10 +32,27 @@ import { shuffle } from '../../core/random.js';
  * @property {boolean} reveal カードで裏を見せているか
  * @property {number} ok 正答数
  * @property {number} answered 記録した問題の数(結果の分母)
+ * @property {boolean} paused 中断しているか
  */
 
+/** 出題する語の選択肢。mix 以外は core の出題順(Docs/21_Quiz.md §7) */
+/** @type {[('mix' | StudyOrder), string][]} */
+const SOURCES = [
+  ['mix', '復習ミックス'],
+  ['shuffle', 'すべての語(シャッフル)'],
+  ['few', '回答数の少ない順'],
+  ['stale', '最後に解いてから時間がたった順'],
+  ['newest', '追加日の新しい順'],
+  ['oldest', '追加日の古い順'],
+  ['lowAcc', '正答率の低い順'],
+];
+
+/** 語数の選択肢。復習ミックスは群で出題集合が決まるので使わない(Docs/23_Screens.md §4) */
+const COUNTS = ['10', '20', '30', '50', 'all'];
+
 const st = {
-  /** @type {'mix' | 'all'} */ source: 'mix',
+  /** @type {'mix' | StudyOrder} */ source: 'mix',
+  /** @type {string} (仮)の既定は 20 語 */ count: '20',
   /** @type {'choice' | 'card'} */ format: 'choice',
   /** @type {'all' | 'word' | 'phrase'} */ kind: 'all',
   /** @type {Quiz | null} */ quiz: null,
@@ -54,7 +73,7 @@ export function render(ctx) {
     bind(ctx);
     return;
   }
-  ctx.root.innerHTML = st.quiz ? renderQuiz(ctx) : renderStart(ctx, modes.choice);
+  ctx.root.innerHTML = !st.quiz ? renderStart(ctx, modes.choice) : st.quiz.paused ? renderPaused(st.quiz) : renderQuiz(ctx);
   bind(ctx);
 }
 
@@ -63,17 +82,27 @@ export function render(ctx) {
  * @param {boolean} choiceOk
  */
 function renderStart(ctx, choiceOk) {
-  const sel = (/** @type {string} */ name, /** @type {string} */ label, /** @type {[string, string][]} */ opts, /** @type {string} */ cur) =>
-    `<select name="${name}" aria-label="${label}">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  const sel = (/** @type {string} */ name, /** @type {string} */ label, /** @type {[string, string][]} */ opts, /** @type {string} */ cur, disabled = false) =>
+    `<select name="${name}" aria-label="${label}"${disabled ? ' disabled' : ''}>${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   const base = baseDate(sessionsOf(ctx.book), ctx.today);
+  const about = {
+    mix: `復習ミックスは、${base === ctx.today || !base ? '今日' : `直近(${esc(base)})`}追加した語・1 回前・3 回前・よく間違える語・回答の少ない語の順に出します。`,
+    shuffle: 'すべての語から、選んだ語数だけを順不同で出します。',
+    few: 'まだあまり解いていない語から出します(回答数が同じ語は順不同)。',
+    stale: 'まだ解いていない語、最後に解いたのが前の語から出します。',
+    newest: '最近追加した語から出します。',
+    oldest: '前に追加した語から出します。',
+    lowAcc: '正答率の低い語から出します。まだ解いていない語は最後です。',
+  }[st.source];
   return `<section class="panel">
     <h2>学習</h2>
     <div class="toolrow">
-      ${sel('source', '出題する語', [['mix', '復習ミックス'], ['all', 'すべての語(シャッフル)']], st.source)}
+      ${sel('source', '出題する語', SOURCES, st.source)}
+      ${sel('count', '語数', COUNTS.map((c) => [c, c === 'all' ? 'すべて' : `${c} 語`]), st.count, st.source === 'mix')}
       ${sel('format', '形式', [['choice', '2 段階クイズ'], ['card', 'カード']], st.format)}
       ${sel('kind', '種別', [['all', '単語と句表現'], ['word', '単語だけ'], ['phrase', '句表現だけ']], st.kind)}
     </div>
-    <p class="meta">復習ミックスは、${base === ctx.today || !base ? '今日' : `直近(${esc(base)})`}追加した語・1 回前・3 回前・よく間違える語・回答の少ない語の順に出します。</p>
+    <p class="meta">${about}${st.source === 'mix' ? '(語数は選べません)' : ''}</p>
     ${choiceOk ? '' : '<p class="stagebanner">語が 4 語未満で内蔵語彙を使わない設定なので、クイズはカードで出します(設定タブで変えられます)。</p>'}
     <div class="rowbtns"><button class="primary" data-action="start">始める</button></div>
   </section>`;
@@ -86,15 +115,29 @@ function start(ctx) {
   if (st.source === 'mix') {
     items = reviewMix(sessionsOf(ctx.book), ctx.book.records, { today: ctx.today, kind: st.kind });
   } else {
-    const kindOk = (/** @type {Word} */ w) => st.kind === 'all' || isPhrase(w) === (st.kind === 'phrase');
-    items = shuffle(ctx.book.words.filter(kindOk), Math.random).map((word) => ({ word, group: null }));
+    const count = st.count === 'all' ? undefined : Number(st.count);
+    items = studyOrder(ctx.book, { order: st.source, kind: st.kind, count }).map((word) => ({ word, group: null }));
   }
-  st.quiz = { items, idx: 0, ...fresh(), ok: 0, answered: 0 };
+  st.quiz = { items, idx: 0, ...fresh(), ok: 0, answered: 0, paused: false };
 }
 
 /** 次の問題へ進むときに消す状態 */
 function fresh() {
   return { stage: /** @type {1 | 2} */ (1), self: null, choice: null, picked: null, verdict: null, reveal: false };
+}
+
+/**
+ * 中断している出題。ここまでの結果を見せ、続きから再開するか、やめて条件を選び直すかを選ばせる。
+ * @param {Quiz} qz
+ */
+function renderPaused(qz) {
+  const at = Math.min(qz.idx + 1, qz.items.length);
+  const sofar = st.format === 'choice' ? ` ｜ ここまでの正答 ${qz.ok} / ${qz.answered}` : '';
+  return `<section class="panel"><h2>学習(中断中)</h2>
+    <p>${at} / ${qz.items.length} 問目で中断しています${sofar}</p>
+    <p class="meta">続きから再開すると、中断した問題から続けます。やめると、ここまでの記録は残したまま条件を選び直せます。</p>
+    <div class="rowbtns"><button class="primary" data-action="resume">続きから再開</button><button data-action="quit">やめて条件を変える</button></div>
+  </section>`;
 }
 
 /** @param {Ctx} ctx */
@@ -122,9 +165,11 @@ function renderQuiz(ctx) {
   if (st.format === 'choice' && !qz.choice) {
     qz.choice = buildChoices(cur, ctx.book.words, { builtin: BUILTIN_VOCAB, useBuiltin: ctx.settings.useBuiltin });
   }
+  const note = group ? groupLabel(group, ctx, cur) : orderNote(ctx, cur);
   const head = `<p class="meta">${qz.idx + 1} / ${qz.items.length}${st.format === 'choice' ? ` ｜ 正答 ${qz.ok} ｜ 第 ${qz.stage} 段階` : ''}` +
-    (group ? ` ｜ <b>${groupLabel(group, ctx)}</b>${group === 'few' ? `(この語の回答 ${answerCount(ctx.book.records, keyOf(cur))} 回)` : ''}` : '') + '</p>';
+    (note ? ` ｜ ${note}` : '') + '</p>';
   const stem = `<div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="en">${esc(cur.en)}</div>`;
+  const pause = '<button data-action="pause">中断</button>';
   if (st.format === 'card' || (qz.choice && !qz.choice.ok)) {
     const why = qz.choice && !qz.choice.ok ? `<p class="stagebanner">${REASON[qz.choice.reason]}、4 択を作れません。カードで確かめてください(記録には入りません)。</p>` : '';
     const back = [cur.ex, cur.exJa, cur.note].filter(Boolean).map(esc).join('<br>');
@@ -132,14 +177,15 @@ function renderQuiz(ctx) {
     const prev = st.format === 'card' ? '<button data-action="prev">← 前へ</button>' : '';
     return head + `<div class="q card" data-action="flip">${why}${stem}<div class="pos">${posLine(cur)}</div>
       ${qz.reveal ? `<div class="back">${esc(cur.ja ?? '(意味なし)')}</div><div class="ex">${back}</div>` : '<p class="meta">タップで意味を表示</p>'}
-      </div><div class="rowbtns">${prev}<button class="primary" data-action="next">次へ →</button><button data-action="quit">終わる</button></div>`;
+      </div><div class="rowbtns">${prev}<button class="primary" data-action="next">次へ →</button>${pause}</div>`;
   }
   const choice = /** @type {import('../../core/distractors.js').ChoiceOk} */ (qz.choice);
   if (qz.stage === 1) {
     return head + `<div class="q">${stem}<div class="pos">${posLine(cur)} ｜ 意味を思い出せますか</div>
       <div class="choices two"><button class="choice self yes" data-action="self" data-v="1">わかる</button>
       <button class="choice self no" data-action="self" data-v="0">わからない</button></div>
-      <p class="stagenote">「わからない」は不正解として記録します。そのあとも選択肢と解説は表示されますが、そこで選んだものは記録に入りません。正直に押してください。</p></div>`;
+      <p class="stagenote">「わからない」は不正解として記録します。そのあとも選択肢と解説は表示されますが、そこで選んだものは記録に入りません。正直に押してください。</p>
+      <div class="rowbtns">${pause}</div></div>`;
   }
   const answered = qz.picked !== null;
   let h = head + `<div class="q">${stem}<div class="pos">${posLine(cur)} ｜ 意味を選んでください</div>`;
@@ -161,32 +207,68 @@ function renderQuiz(ctx) {
     const sub = [cur.exJa, cur.note].filter(Boolean).map(esc).join(' ／ ');
     h += `<div class="fb" role="status">${verdict}${missOften(ctx.book.records, keyOf(cur)) ? ' <span class="meta">よく間違える語</span>' : ''}
       ${cur.ex ? `<div lang="en">${esc(cur.ex)}</div>` : ''}${sub ? `<div class="meta">${sub}</div>` : ''}
-      <div class="rowbtns left"><button class="primary" data-action="next">次の問題 →</button></div></div>`;
+      <div class="rowbtns left"><button class="primary" data-action="next">次の問題 →</button>${pause}</div></div>`;
+  } else {
+    h += `<div class="rowbtns">${pause}</div>`;
   }
   return h + '</div>';
 }
 
 /**
+ * 復習ミックスの群の見出し。
  * @param {Group} g
  * @param {Ctx} ctx
+ * @param {Word} cur
  */
-function groupLabel(g, ctx) {
+function groupLabel(g, ctx, cur) {
   if (g === 'today') {
     const b = baseDate(sessionsOf(ctx.book), ctx.today);
-    return b === ctx.today || !b ? '今日' : `直近(${esc(b)})`;
+    return `<b>${b === ctx.today || !b ? '今日' : `直近(${esc(b)})`}</b>`;
   }
-  return { d1: '1 回前', d3: '3 回前', miss: 'よく間違える', few: '回答数が少ない' }[g];
+  const label = `<b>${{ d1: '1 回前', d3: '3 回前', miss: 'よく間違える', few: '回答数が少ない' }[g]}</b>`;
+  return g === 'few' ? `${label}(この語の回答 ${answerCount(ctx.book.records, keyOf(cur))} 回)` : label;
 }
 
 /**
- * 記録を 1 件積んで保存する。
+ * 出題順を選んだときに、その順の元になった値を添える(なぜこの語が今出たかを判るように)。
+ * @param {Ctx} ctx
+ * @param {Word} cur
+ */
+function orderNote(ctx, cur) {
+  const k = keyOf(cur);
+  const n = answerCount(ctx.book.records, k);
+  if (st.source === 'few') return `この語の回答 ${n} 回`;
+  if (st.source === 'stale') {
+    const at = ctx.book.records.last?.[k];
+    return !n ? 'まだ回答なし' : at ? `最後の回答 ${esc(localDate(at))}` : '最後の回答日時の記録なし';
+  }
+  if (st.source === 'newest' || st.source === 'oldest') return `追加日 ${esc(ctx.book.added[k] ?? '')}`;
+  if (st.source === 'lowAcc') {
+    const acc = statOf(cur, ctx.book.records).acc;
+    return acc === null ? 'まだ回答なし' : `正答率 ${Math.round(acc * 100)}%(${n} 回)`;
+  }
+  return '';
+}
+
+/**
+ * ISO 8601 の日時を、端末の時刻での日付(YYYY-MM-DD)にする。
+ * @param {string} iso
+ */
+function localDate(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 記録を 1 件積んで保存する。最後に回答した日時も今の時刻にする(「最後に解いてから時間がたった順」に使う)。
  * @param {Ctx} ctx
  * @param {Word} w
  * @param {{ ok: boolean, self: boolean }} r
  */
 function record(ctx, w, r) {
   /** @type {Quiz} */ (st.quiz).answered++;
-  return ctx.commit({ ...ctx.book, records: recordAnswer(ctx.book.records, keyOf(w), r.ok, r.self) });
+  const at = new Date().toISOString();
+  return ctx.commit({ ...ctx.book, records: recordAnswer(ctx.book.records, keyOf(w), r.ok, r.self, at) });
 }
 
 /** @param {Ctx} ctx */
@@ -194,9 +276,14 @@ function bind(ctx) {
   ctx.root.onchange = (e) => {
     const t = e.target;
     if (!(t instanceof HTMLSelectElement)) return;
-    if (t.name === 'source') st.source = /** @type {any} */ (t.value);
+    if (t.name === 'count') st.count = t.value;
     if (t.name === 'format') st.format = /** @type {any} */ (t.value);
     if (t.name === 'kind') st.kind = /** @type {any} */ (t.value);
+    if (t.name === 'source') {
+      st.source = /** @type {any} */ (t.value);
+      // 説明文と、語数の欄を使えるかが変わる
+      ctx.rerender();
+    }
   };
   ctx.root.onclick = async (e) => {
     const el = actionOf(e);
@@ -213,6 +300,15 @@ function bind(ctx) {
       return ctx.rerender();
     }
     if (!qz) return;
+    if (act === 'pause') {
+      qz.paused = true;
+      return ctx.rerender();
+    }
+    if (act === 'resume') {
+      qz.paused = false;
+      return ctx.rerender();
+    }
+    if (qz.paused) return;
     const cur = qz.items[qz.idx]?.word;
     if (act === 'flip') {
       qz.reveal = !qz.reveal;

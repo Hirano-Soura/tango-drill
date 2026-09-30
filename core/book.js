@@ -14,7 +14,7 @@ import { parseImport, readItem, CURRENT_JSON_FORMAT } from './importFormat.js';
 /**
  * 単語帳の全体。語以外の項目は語の鍵(INV-4)で引く。
  * - added: 語を追加した日(YYYY-MM-DD)。回は追加した日で束ねる(Docs/21_Quiz.md §5)。単語帳のどの語も持つ
- * - records: 正誤と自己申告。単語帳から消した語の記録も残りうる(同じ鍵の語を足し直すと、また付く)
+ * - records: 正誤と自己申告と最後の回答日時。単語帳から消した語の記録も残りうる(同じ鍵の語を足し直すと、また付く)
  * - starred: 利用者が印を付けた語の鍵
  * @typedef {object} Book
  * @property {Word[]} words
@@ -39,7 +39,7 @@ export function emptyBook() {
  * 語の鍵が変わったとき(取り込みで品詞が埋まった等)に、鍵で引く項目を新しい鍵へ移した Book を返す。
  * 語そのもの(words)は呼ぶ側が既に新しい形にしてある前提で、ここでは触らない。渡した Book は変えない。
  * to の鍵に消した語の記録が残っていた場合、from に記録があればそれで置き換える(今ある語の記録を優先する)。
- * 正誤(hist)と自己申告(self)は 1 組で置き換える。from に記録が無ければ、残っていた記録がそのまま付く
+ * 正誤(hist)・自己申告(self)・最後の回答日時(last)は 1 組で置き換える。from に記録が無ければ、残っていた記録がそのまま付く
  * (同じ鍵の語を足し直したときと同じ)。
  * @param {Book} book
  * @param {readonly Rekey[]} rekeys
@@ -49,6 +49,7 @@ export function moveKeys(book, rekeys) {
   const added = { ...book.added };
   const hist = { ...book.records.hist };
   const self = { ...book.records.self };
+  const last = { ...book.records.last };
   let starred = [...book.starred];
   for (const { from, to } of rekeys) {
     if (from === to) continue;
@@ -56,9 +57,9 @@ export function moveKeys(book, rekeys) {
       added[to] = added[from];
       delete added[from];
     }
-    // 正誤と自己申告は 1 組で移す(片方だけ置き換えると、末尾から対にしたときの対応が崩れる)
-    if (from in hist || from in self) {
-      for (const m of [hist, self]) {
+    // 正誤・自己申告・最後の回答日時は 1 組で移す(片方だけ置き換えると、末尾から対にしたときの対応が崩れる)
+    if (from in hist || from in self || from in last) {
+      for (const m of [hist, self, last]) {
         if (from in m) m[to] = m[from];
         else delete m[to];
         delete m[from];
@@ -66,7 +67,7 @@ export function moveKeys(book, rekeys) {
     }
     if (starred.includes(from)) starred = [...new Set(starred.map((k) => (k === from ? to : k)))];
   }
-  return { words: book.words, added, records: { hist, self }, starred };
+  return { words: book.words, added, records: { hist, self, last }, starred };
 }
 
 /**
