@@ -41,7 +41,7 @@ FAIL があれば本人に伝えて止まる。1 つ目で何か出たら(今の
 
 | 系統 | 手段 | 本体の起動 | 回数無制限か |
 | --- | --- | --- | --- |
-| 挙動 | `npm test`(`node --test`。対象は `core/`・`app/` の保存層と版の形・`Tools/Migrate` のファイルの読み取り。IndexedDB は `fake-indexeddb` で代える。未完の見本などは todo として `Temp/tango-drill_check.txt` に `[TODO]` で出る) | 不要 | 無制限 |
+| 挙動 | `npm test`(`node --test`。対象は `core/`・`app/` の保存層・`Tools/Migrate` のファイルの読み取り。IndexedDB は `fake-indexeddb` で代える。未完の見本などは todo として `Temp/tango-drill_check.txt` に `[TODO]` で出る) | 不要 | 無制限 |
 | 型 | `npm run typecheck`(`tsc --noEmit`。JSDoc の型注釈を検査。`core/` は DOM なしの `tsconfig.json`、`app/` は DOM ありの `tsconfig.app.json`。`Tools/` と `tests/tools/` は型検査の外) | 不要 | 無制限 |
 | 文書 | `python Tools/DocAudit/doc_audit.py`(レポートは `Temp/tango-drill_doc_audit.txt`) | 不要 | 無制限 |
 | 画面(三本立ての外) | `npm run e2e`(Playwright の通し確認。端末の Edge を使う。`Docs/23_Screens.md` §6)+ 実機での目視 | 必要(Playwright が静的サーバーを立てる) | 節目のみ |
@@ -65,6 +65,13 @@ FAIL があれば本人に伝えて止まる。1 つ目で何か出たら(今の
 - **進捗の唯一の真実は `Docs/50_Tasks.md`**(UD-3)
 - 意味の齟齬はサブエージェント `tango-drill-doc-audit`(読み取り専用)へ。
   機械検査(`Tools/DocAudit`)と**両方を回して初めて塞がる**
+
+### バージョン
+
+- アプリは `n.m.l` の 3 区域で版を持つ。規則と履歴は `Docs/53_Versions.md`。`main` に統合する変更では、`core/version.js`・`package.json`・履歴の表の先頭を同じ値に上げる(一致はテストが検査する)
+- **実行完了時のメッセージで、今回バージョンを何から何に上げたかを述べる**(例: 「バージョン: 0.18.1 → 0.19.0」)。
+  番号は `main` に統合した順で決まるので、作業を始めたときと統合する直前の両方で `origin/main` の版を見る(他の端末・セッションが先に統合していれば、その次の番号に付け直す)。
+  まだ `main` に統合していない作業では、統合するときに付ける予定の番号として述べる
 
 ### 共通ルールの読み替え
 
@@ -99,20 +106,3 @@ FAIL があれば本人に伝えて止まる。1 つ目で何か出たら(今の
 - ビルド工程を持たない。ブラウザが直接読める ES モジュールで書く
 - 型は JSDoc で書き、`tsc` は検査にだけ使う(配布物に TypeScript を入れない)
 - 画面に依存しない処理は `core/` に置く。画面側から `core/` を呼ぶ向きだけを許す
-
----
-
-## 6. アプリの版
-
-- 版は `app/version.js` の `APP_VERSION`(`MAJOR.MINOR.PATCH`)だけに置く。Q&A タブに出す(利用者が不具合の報告に添える)
-- **配布するファイル(`app/`・`core/`・`index.html`)を変えたら版を上げる。** 文書・テスト・`Tools/` だけの変更では上げない
-
-| 上げる桁 | 変更 |
-| --- | --- |
-| MAJOR | 過去のバックアップや取り込み形式が読めなくなる変更(INV-3 に反するので、原則として起こさない) |
-| MINOR | 機能・画面の追加や変更 |
-| PATCH | 不具合の修正・文言の手直し |
-
-- **実行完了時のメッセージで、今回の版を何から何に上げたかを述べる**(例: 「版: 0.2.0 → 0.2.1」)。
-  上げなかったときは、上げなかったことと理由(配布するファイルを変えていない等)を述べる
-- 1 つの PR の中では 1 回だけ上げる(同じ PR で重ねて変えたら、`main` の版から見て 1 段上げた値にまとめる)
