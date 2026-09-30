@@ -1,7 +1,7 @@
 // 追加タブの「AI に頼む」: 覚えたい語の一覧から依頼文(core/aiPrompt.js)を作り、写させる。
 // AI へは何も送らない(INV-1)。利用者が AI に貼り、返ってきた答えを「まとめて取り込む」に貼る(確認表を経る。INV-2)。
 
-import { esc, actionOf } from './dom.js';
+import { esc, actionOf, foldOpen, bindFolds } from './dom.js';
 import { aiPrompt, requestWords } from '../core/aiPrompt.js';
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
@@ -11,8 +11,8 @@ const state = { words: '', examples: true, prompt: '', message: '' };
 
 /** @returns {string} */
 export function aiHtml() {
-  return `<section class="panel" id="ai-panel">
-    <h2>AI に頼む</h2>
+  return `${foldOpen('ai-panel')}
+    <summary><h2>AI に頼む</h2></summary>
     <p class="hint">覚えたい語を 1 行に 1 つ書いて依頼文を作り、ChatGPT・Claude・Gemini などに貼ってください。
       返ってきた答えを下の「まとめて取り込む」にそのまま貼り(例文の出どころは「AI」)、確認表を経て単語帳に入れます。このアプリから AI へは何も送りません。</p>
     <div class="wordform">
@@ -25,7 +25,7 @@ export function aiHtml() {
         <div class="rowbtns"><button type="button" data-action="ai-copy">依頼文をコピー</button></div>` : ''}
     </div>
     <p class="msg" role="status" id="ai-msg">${esc(state.message)}</p>
-  </section>`;
+  </details>`;
 }
 
 /** @param {Ctx} ctx */
@@ -54,6 +54,7 @@ export async function handleAiClick(ctx, e) {
     const panel = ctx.root.querySelector('#ai-panel');
     if (panel) {
       panel.outerHTML = aiHtml();
+      bindFolds(ctx.root);
       bindAi(ctx);
     } else {
       ctx.rerender();

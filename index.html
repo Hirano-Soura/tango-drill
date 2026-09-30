@@ -27,6 +27,12 @@
   input::placeholder,textarea::placeholder{color:var(--sub);opacity:1}
   input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;max-width:100%;min-width:0}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
+  .fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  .fold>summary::-webkit-details-marker{display:none}
+  .fold>summary::before{content:'\25B6';font-size:11px;color:var(--sub);transition:transform .15s}
+  .fold[open]>summary::before{transform:rotate(90deg)}
+  .fold>summary h2{margin:0}
+  .fold[open]>summary{margin-bottom:10px}
   .wordform .f{margin:0 0 10px}
   .wordform label{display:block;font-size:13px;color:var(--sub)}
   .wordform input,.wordform textarea{display:block;width:100%;margin-top:3px}

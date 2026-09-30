@@ -171,3 +171,19 @@ test('利用者の入力は HTML として解釈しない', async ({ page }) => 
   await expect(page.locator('li.word b')).toHaveCount(0);
   await expect(page.locator('ul.words')).toContainText('<b>太字</b>');
 });
+
+test('追加タブの 3 つの欄は開閉でき、描き直しても開閉が残る', async ({ page }) => {
+  await page.goto('/');
+  for (const id of ['add-panel', 'ai-panel', 'import-panel']) {
+    const d = page.locator(`#${id}`);
+    await expect(d).toHaveJSProperty('open', true);
+    await d.locator('summary').click();
+    await expect(d).toHaveJSProperty('open', false);
+  }
+  // 別のタブへ移って戻しても閉じたまま
+  await tab(page, '単語帳').click();
+  await tab(page, '追加').click();
+  await expect(page.locator('#ai-panel')).toHaveJSProperty('open', false);
+  await page.locator('#ai-panel summary').click();
+  await expect(page.locator('#ai-panel')).toHaveJSProperty('open', true);
+});
