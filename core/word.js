@@ -20,6 +20,9 @@
 /** 括弧書きの補足(全角・半角)を落とす */
 const PAREN = /[（(][^）)]*[）)]/g;
 
+/** 訳語の中の語義の区切り(jaSenses と、取り込みで意味を足すときに使う) */
+export const JA_SEP = /[、;；,，／]|\s\/\s/;
+
 /**
  * 品詞から括弧書きの補足を落として正規化する。
  * @param {Pick<Word, 'pos'>} w
@@ -70,7 +73,7 @@ export function posParts(w) {
 export function jaSenses(ja) {
   const body = String(ja || '').replace(PAREN, '');
   const out = new Set();
-  for (const p of body.split(/[、;；,，／]|\s\/\s/)) {
+  for (const p of body.split(JA_SEP)) {
     const t = p
       .replace(/[〜～]/g, '')
       .replace(/\bA\b|\bB\b/g, '')

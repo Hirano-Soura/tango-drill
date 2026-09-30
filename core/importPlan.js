@@ -3,7 +3,7 @@
 // applyImport だけで、applyImport は confirmPlan を通った確認表しか受け付けない。
 // 規則は Docs/20_ImportFormat.md §4。
 
-import { keyOf, normPos } from './word.js';
+import { keyOf, normPos, JA_SEP } from './word.js';
 
 /** @typedef {import('./word.js').Word} Word */
 /** @typedef {import('./importFormat.js').ParseResult} ParseResult */
@@ -23,19 +23,21 @@ const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
  * - add: 新しい語として足す
  * - merge: 既存の語(target)の空欄を埋める。食い違う項目は、既定では単語帳の値を残す
  * - same: 既存の語と同じで、変わるところが無い
- * - ambiguous: 品詞が無く、同じ綴りの語が複数あって当て先を決められない。既定では取り込まない
+ * - join: 同じ入力の先の行で足す語と、同じ綴りで品詞の有無だけが違う。同じ語かもしれないので、既定ではその行の語に当てる
+ * - ambiguous: 品詞が無く、同じ綴りの語(単語帳の語、または入力の先の行で足す語)が複数あって当て先を決められない。既定では取り込まない
  * - duplicate: 同じ入力の中で先に出た語と重なる。取り込まない
  * - error / skipped: 読めなかった行・語ではない行。取り込まない
  * @typedef {object} PlanRow
  * @property {number} ref 解析結果の ref(簡易形式なら行番号)
  * @property {string} raw
- * @property {'add' | 'merge' | 'same' | 'ambiguous' | 'duplicate' | 'error' | 'skipped'} action
+ * @property {'add' | 'merge' | 'same' | 'join' | 'ambiguous' | 'duplicate' | 'error' | 'skipped'} action
  * @property {Word} [word] 入力の語
- * @property {string} [target] 当てる既存の語の鍵(merge / same)
+ * @property {string} [target] 当てる語の鍵(merge / same は既存の語、join は先の行で足す語)
+ * @property {number} [targetRef] 当てる先の行の ref(join)
  * @property {string[]} [candidates] 当て先の候補の鍵(ambiguous)
- * @property {{ target: string, fills: string[], conflicts: Conflict[] }[]} [previews] 候補ごとに、当てたら変わること(ambiguous)
- * @property {string[]} [fills] 空欄を埋める項目(merge)
- * @property {Conflict[]} [conflicts] 値が食い違う項目(merge)
+ * @property {{ target: string, ref?: number, fills: string[], conflicts: Conflict[] }[]} [previews] 候補ごとに、当てたら変わること(ambiguous。ref は候補が入力の先の行のとき)
+ * @property {string[]} [fills] 空欄を埋める項目(merge / join)
+ * @property {Conflict[]} [conflicts] 値が食い違う項目(merge / join。join の current は先の行の値)
  * @property {string} [message] error / skipped / duplicate の理由
  * @property {string[]} warnings
  */
@@ -52,11 +54,13 @@ const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
 
 /**
  * 確認表で利用者が選んだこと。行の ref ごとに指定し、指定の無い行は既定に従う。
- * - 'skip': 取り込まない(add / merge)
+ * - 'skip': 取り込まない(add / merge / join)
  * - 'overwrite': 食い違う項目も入力の値で上書きする(食い違いのある merge)
- * - 'add': 新しい語として足す(ambiguous)
- * - { target }: この既存の語に当てる(ambiguous。candidates のどれか)
- * @typedef {Record<number, 'skip' | 'overwrite' | 'add' | { target: string }>} Choices
+ * - 'sense': 意味を別の意味として「；」で並べる。他の食い違う項目は単語帳の値を残す(意味が食い違う merge)
+ * - 'extend': 意味を既存の意味に「、」で足す。他の食い違う項目は単語帳の値を残す(意味が食い違う merge)
+ * - 'add': 新しい語として足す(ambiguous / join)
+ * - { target }: この語に当てる(ambiguous。candidates のどれか)
+ * @typedef {Record<number, 'skip' | 'overwrite' | 'sense' | 'extend' | 'add' | { target: string }>} Choices
  */
 
 /**
@@ -73,7 +77,7 @@ const FIELDS = /** @type {const} */ (['pos', 'trans', 'ja', 'note', 'kind']);
 /**
  * @typedef {object} ApplyResult
  * @property {Word[]} words 保存する単語帳の全体
- * @property {{ from: string, to: string }[]} rekeys 品詞が埋まって鍵が変わった語(記録の付け替えに使う)
+ * @property {{ from: string, to: string }[]} rekeys 品詞が埋まって鍵が変わった既存の語(記録の付け替えに使う。同じ取り込みで足した語は addedKeys の側を書き換える)
  * @property {string[]} addedKeys 新しく足した語の鍵(追加日を付けるのに使う)
  * @property {number} added
  * @property {number} updated 中身が実際に変わった既存の語の数(食い違いを残しただけの行は数えない)
@@ -97,7 +101,7 @@ export function planImport(existing, parsed, opts = {}) {
     format: parsed.format,
     warnings: [...parsed.warnings],
     rows: [],
-    counts: { add: 0, merge: 0, same: 0, ambiguous: 0, duplicate: 0, error: 0, skipped: 0 },
+    counts: { add: 0, merge: 0, same: 0, join: 0, ambiguous: 0, duplicate: 0, error: 0, skipped: 0 },
     base: fingerprint(existing),
   };
   if (parsed.fatal !== undefined) return register({ ...plan, fatal: parsed.fatal });
@@ -105,13 +109,17 @@ export function planImport(existing, parsed, opts = {}) {
   const byKey = new Map(existing.map((w) => [keyOf(w), w]));
   /** 入力の中で既に使った鍵(足す語の鍵・当てた既存の語の鍵) */
   const used = new Set();
+  /** @type {Map<string, Pending>} 入力の先の行で足す語のうち、まだどの行も当てていないもの */
+  const pending = new Map();
   for (const r of parsed.rows) {
     const base = { ref: r.ref, raw: r.raw, warnings: [...r.warnings] };
     /** @type {PlanRow} */
     let row;
     if (r.error !== undefined) row = { ...base, action: 'error', message: r.error };
     else if (r.skipped !== undefined || !r.word) row = { ...base, action: 'skipped', message: r.skipped ?? '' };
-    else row = planWord(base, withOptions(r.word, opts), existing, byKey, used);
+    else row = planWord(base, withOptions(r.word, opts), existing, byKey, used, pending);
+    if (row.action === 'add' && row.word) pending.set(keyOf(row.word), { ref: row.ref, word: row.word });
+    if (row.action === 'join' && row.target) pending.delete(row.target);
     plan.counts[row.action]++;
     plan.rows.push(row);
   }
@@ -128,15 +136,18 @@ function register(plan) {
   return plan;
 }
 
+/** @typedef {{ ref: number, word: Word }} Pending 入力の先の行で足す語 */
+
 /**
  * @param {{ ref: number, raw: string, warnings: string[] }} base
  * @param {Word} word
  * @param {Word[]} existing
  * @param {Map<string, Word>} byKey
  * @param {Set<string>} used
+ * @param {Map<string, Pending>} pending
  * @returns {PlanRow}
  */
-function planWord(base, word, existing, byKey, used) {
+function planWord(base, word, existing, byKey, used, pending) {
   const m = findTarget(word, existing, byKey);
   if (m.target === undefined) {
     // 足す語・当て先の決まらない語: 足したときの鍵が入力の中で重なれば取り込まない(INV-4)
@@ -147,6 +158,20 @@ function planWord(base, word, existing, byKey, used) {
       const previews = m.candidates.map((t) => ({ target: t, ...diff(/** @type {Word} */ (byKey.get(t)), word) }));
       return { ...base, action: 'ambiguous', word, candidates: m.candidates, previews };
     }
+    // 入力の先の行で足す語のうち、同じ綴りで品詞の有無だけが違うもの。同じ語かもしれない
+    const near = [...pending.values()].filter((p) => p.word.en === word.en && !normPos(p.word) !== !normPos(word));
+    if (near.length === 1) {
+      const t = near[0];
+      const tk = keyOf(t.word);
+      used.add(keyOf(mergeWord(t.word, word, 'keep')));
+      const warn = `${t.ref} 行目の ${t.word.en}(${normPos(t.word) || '品詞なし'})と品詞の有無だけが違います。同じ語かもしれないので、既定ではその行に当てます`;
+      return { ...base, warnings: [...base.warnings, warn], action: 'join', word, target: tk, targetRef: t.ref, ...diff(t.word, word) };
+    }
+    if (near.length > 1) {
+      const previews = near.map((p) => ({ target: keyOf(p.word), ref: p.ref, ...diff(p.word, word) }));
+      const warn = `品詞のある同じ綴りの行(${near.map((p) => p.ref).join('・')} 行目)があります。同じ語かもしれないので、当てる行を選んでください`;
+      return { ...base, warnings: [...base.warnings, warn], action: 'ambiguous', word, candidates: previews.map((p) => p.target), previews };
+    }
     return { ...base, action: 'add', word };
   }
   const target = m.target;
@@ -156,7 +181,7 @@ function planWord(base, word, existing, byKey, used) {
   const cur = /** @type {Word} */ (byKey.get(target));
   const { fills, conflicts } = diff(cur, word);
   used.add(target);
-  used.add(keyOf(mergeWord(cur, word, false)));
+  used.add(keyOf(mergeWord(cur, word, 'keep')));
   if (!fills.length && !conflicts.length) return { ...base, action: 'same', word, target };
   return { ...base, action: 'merge', word, target, fills, conflicts };
 }
@@ -220,18 +245,21 @@ function diff(cur, inc) {
 
 /**
  * 既存の語に入力の語を重ねる。空欄は埋め、食い違いは overwrite のときだけ入力の値にする。
+ * sense / extend は意味だけを既存の意味に足し、他の食い違いは既存の値を残す。
  * 品詞は括弧書きの違いしか食い違わない(鍵が同じ語にしか当てない)ので上書きしない。
  * @param {Word} cur
  * @param {Word} inc
- * @param {boolean} overwrite
+ * @param {'keep' | 'overwrite' | 'sense' | 'extend'} mode
  * @returns {Word}
  */
-function mergeWord(cur, inc, overwrite) {
+function mergeWord(cur, inc, mode) {
+  const overwrite = mode === 'overwrite';
   const out = cloneWord(cur);
   for (const f of FIELDS) {
     const v = inc[f];
     if (!v) continue;
     if (!out[f] || (overwrite && f !== 'pos')) out[f] = v;
+    else if (f === 'ja' && (mode === 'sense' || mode === 'extend')) out.ja = joinJa(/** @type {string} */ (out.ja), v, mode === 'sense' ? '；' : '、');
   }
   if (inc.ex && (!cur.ex || (overwrite && cur.ex !== inc.ex))) {
     // 例文を入力のものにするときは、和訳と出どころも入力のものにする(無ければ消す)
@@ -249,6 +277,23 @@ function mergeWord(cur, inc, overwrite) {
 }
 
 /**
+ * 既存の意味に入力の意味を足す。入力の語義のうち既存の意味に同じ文字列のあるものは足さない
+ * (「走る」に「走る、経営する」を「；」で足すと「走る；経営する」)。
+ * @param {string} cur
+ * @param {string} inc
+ * @param {string} sep
+ * @returns {string}
+ */
+function joinJa(cur, inc, sep) {
+  const split = (/** @type {string} */ s) => s.split(JA_SEP).map((x) => x.trim()).filter(Boolean);
+  const have = new Set(split(cur));
+  const parts = split(inc);
+  const fresh = parts.filter((p) => !have.has(p));
+  if (!fresh.length) return cur;
+  return cur + sep + (fresh.length === parts.length ? inc.trim() : fresh.join('、'));
+}
+
+/**
  * 確認表を確定する。確定した確認表だけが applyImport に渡せる(INV-2)。
  * @param {Plan} plan
  * @param {Choices} [choices]
@@ -261,25 +306,35 @@ export function confirmPlan(plan, choices = {}) {
     const row = plan.rows.find((r) => r.ref === Number(refText));
     if (!row) throw new Error(`${refText} 番の行は確認表にありません`);
     const ok =
-      (c === 'skip' && (row.action === 'add' || row.action === 'merge')) ||
+      (c === 'skip' && (row.action === 'add' || row.action === 'merge' || row.action === 'join')) ||
       (c === 'overwrite' && row.action === 'merge' && !!row.conflicts?.length) ||
-      (c === 'add' && row.action === 'ambiguous') ||
+      ((c === 'sense' || c === 'extend') && row.action === 'merge' && !!row.conflicts?.some((x) => x.field === 'ja')) ||
+      (c === 'add' && (row.action === 'ambiguous' || row.action === 'join')) ||
       (typeof c === 'object' && row.action === 'ambiguous' && !!row.candidates?.includes(c.target));
     if (!ok) throw new Error(`${refText} 番の行(${row.action})には ${JSON.stringify(c)} を選べません`);
   }
-  // 1 つの既存の語に当てる行は 1 つだけ(ambiguous で選んだ当て先が、他の行の当て先と重ならないこと)
+  // 1 つの語に当てる行は 1 つだけ(ambiguous で選んだ当て先が、他の行・join の既定の当て先と重ならないこと)
   /** @type {Map<string, number>} */
   const targets = new Map();
   for (const row of plan.rows) {
     const c = choices[row.ref];
     const t =
       (row.action === 'merge' || row.action === 'same') && c !== 'skip' ? row.target
-        : row.action === 'ambiguous' && typeof c === 'object' ? c.target
-          : undefined;
+        : row.action === 'join' && c === undefined ? row.target
+          : row.action === 'ambiguous' && typeof c === 'object' ? c.target
+            : undefined;
     if (t === undefined) continue;
     const prev = targets.get(t);
     if (prev !== undefined) throw new Error(`${row.ref} 番の行の当て先 ${t} は、${prev} 番の行の当て先と重なります`);
     targets.set(t, row.ref);
+  }
+  // 入力の先の行で足す語に当てるなら、その行は外せない
+  for (const row of plan.rows) {
+    if (row.action !== 'add' || !row.word || choices[row.ref] !== 'skip') continue;
+    const by = targets.get(keyOf(row.word));
+    if (by !== undefined) {
+      throw new Error(`${by} 番の行は ${row.ref} 番の行の語に当てるので、${row.ref} 番の行は外せません(${by} 番の行も外すか、別の語として足してください)`);
+    }
   }
   /** @type {ConfirmedPlan} */
   const out = deepFreeze({ plan, choices: JSON.parse(JSON.stringify(choices)) });
@@ -312,7 +367,7 @@ export function applyImport(existing, confirmedPlan) {
   for (const row of plan.rows) {
     const c = choices[row.ref];
     if (c === 'skip' || !row.word) continue;
-    if (row.action === 'add' || (row.action === 'ambiguous' && c === 'add')) {
+    if (row.action === 'add' || ((row.action === 'ambiguous' || row.action === 'join') && c === 'add')) {
       // 防御: planImport の重複判定を通った確認表では起きない
       if (index.has(keyOf(row.word))) throw new Error(`${keyOf(row.word)} は既にあります(INV-4)`);
       index.set(keyOf(row.word), words.length);
@@ -323,22 +378,28 @@ export function applyImport(existing, confirmedPlan) {
     }
     let target = row.target;
     if (row.action === 'ambiguous') target = typeof c === 'object' ? c.target : undefined;
-    else if (row.action !== 'merge') continue;
-    const i = target === undefined ? undefined : index.get(target);
-    if (i === undefined) continue;
-    const merged = mergeWord(words[i], row.word, c === 'overwrite');
+    else if (row.action !== 'merge' && row.action !== 'join') continue;
+    if (target === undefined) continue;
+    const i = index.get(target);
+    // 防御: confirmPlan を通った確認表では起きない(当て先の行を外していれば確定しない)
+    if (i === undefined) throw new Error(`${row.ref} 番の行の当て先 ${target} がありません`);
+    const merged = mergeWord(words[i], row.word, c === 'overwrite' || c === 'sense' || c === 'extend' ? c : 'keep');
     // 食い違いだけで上書きを選ばなかった行は何も変えない。更新の数に入れない
     if (sameWord(merged, words[i])) continue;
     const before = keyOf(words[i]);
     words[i] = merged;
     const after = keyOf(words[i]);
+    // 同じ取り込みで足した語に当てたなら、足した語の中身が変わっただけ。鍵が変わっても付け替えず(記録は鍵に付くので、
+    // 消した語の記録が残っていれば最後の鍵のものが付く)、更新にも数えない
+    const fresh = addedKeys.indexOf(before);
     if (after !== before) {
       if (index.has(after)) throw new Error(`${before} の品詞を埋めると、既にある ${after} と重なります`);
       index.delete(before);
       index.set(after, i);
-      rekeys.push({ from: before, to: after });
+      if (fresh >= 0) addedKeys[fresh] = after;
+      else rekeys.push({ from: before, to: after });
     }
-    updated++;
+    if (fresh < 0) updated++;
   }
   return { words, rekeys, addedKeys, added, updated };
 }
