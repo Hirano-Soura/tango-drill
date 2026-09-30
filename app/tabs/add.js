@@ -34,6 +34,7 @@ const ACTION_LABEL = /** @type {Record<PlanRow['action'], string>} */ ({
   add: '足す',
   merge: '既存の語に重ねる',
   same: '変更なし',
+  join: '同じ語かも',
   ambiguous: '当て先を選ぶ',
   duplicate: '重複',
   error: '読めない行',
@@ -146,7 +147,7 @@ function bindImport(ctx) {
     const next = { ...choices };
     if (v === '') delete next[ref];
     else if (v.startsWith('t:')) next[ref] = { target: v.slice(2) };
-    else next[ref] = /** @type {'skip' | 'overwrite' | 'add'} */ (v);
+    else next[ref] = /** @type {'skip' | 'overwrite' | 'sense' | 'extend' | 'add'} */ (v);
     choices = next;
   };
 
@@ -217,7 +218,8 @@ function planHtml(p) {
   h += '<ul class="words plan">';
   for (const row of p.rows) h += rowHtml(row);
   h += `</ul>
-    <p class="hint">確定するまで単語帳は変わりません。食い違う項目は、上書きを選んだ行だけ入力の値にします。</p>
+    <p class="hint">確定するまで単語帳は変わりません。食い違う項目は、上書きを選んだ行だけ入力の値にします。
+      意味だけが違うときは、別の意味として並べるか、既存の意味に足すかも選べます。</p>
     <div class="rowbtns"><button type="button" class="primary" data-action="confirm">確定して取り込む</button>
       <button type="button" data-action="cancel-plan">やめる</button></div></div>`;
   return h;
@@ -240,13 +242,14 @@ function rowHtml(row) {
   } else {
     body += `<div class="ex">${esc(row.raw)}</div>`;
   }
-  if (row.target && row.action !== 'duplicate') body += `<div class="meta">単語帳の ${esc(keyLabel(row.target))} に当てる</div>`;
+  if (row.action === 'join' && row.target) body += `<div class="meta">${row.targetRef} 行目の ${esc(keyLabel(row.target))} に当てる</div>`;
+  else if (row.target && row.action !== 'duplicate') body += `<div class="meta">単語帳の ${esc(keyLabel(row.target))} に当てる</div>`;
   if (row.fills?.length) body += `<div class="meta">埋める項目: ${row.fills.map(fieldLabel).join('・')}</div>`;
-  if (row.conflicts?.length) body += conflictsHtml(row.conflicts);
+  if (row.conflicts?.length) body += conflictsHtml(row.conflicts, row.action === 'join' ? `${row.targetRef} 行目` : '単語帳');
   for (const pv of row.previews ?? []) {
-    body += `<div class="meta">${esc(keyLabel(pv.target))} に当てると: ` +
+    body += `<div class="meta">${pv.ref === undefined ? '' : `${pv.ref} 行目の `}${esc(keyLabel(pv.target))} に当てると: ` +
       (pv.fills.length ? `埋める項目 ${pv.fills.map(fieldLabel).join('・')}` : '埋める項目なし') +
-      (pv.conflicts.length ? ` ／ 食い違い ${pv.conflicts.map((c) => fieldLabel(c.field)).join('・')}(単語帳の値を残す)` : '') +
+      (pv.conflicts.length ? ` ／ 食い違い ${pv.conflicts.map((c) => fieldLabel(c.field)).join('・')}(${pv.ref === undefined ? '単語帳' : `${pv.ref} 行目`}の値を残す)` : '') +
       '</div>';
   }
   if (row.message) body += `<div class="meta">${esc(row.message)}</div>`;
@@ -267,10 +270,17 @@ function selectHtml(row) {
   if (row.action === 'add') opts = [['', '足す'], ['skip', '外す']];
   else if (row.action === 'merge') {
     opts = [['', '空欄だけ埋める']];
+    if (row.conflicts?.some((c) => c.field === 'ja')) opts.push(['sense', '別の意味として追加(；で並べる)'], ['extend', '既存に意味を足す(、で足す)']);
     if (row.conflicts?.length) opts.push(['overwrite', '食い違いも上書き']);
     opts.push(['skip', '外す']);
+  } else if (row.action === 'join') {
+    opts = [['', `${row.targetRef} 行目に当てる`], ['add', '別の語として足す'], ['skip', '外す']];
   } else if (row.action === 'ambiguous') {
-    opts = [['', '取り込まない'], ...(row.candidates ?? []).map((k) => /** @type {[string, string]} */ ([`t:${k}`, `${keyLabel(k)} に当てる`])), ['add', '新しい語として足す']];
+    const at = (/** @type {string} */ k) => {
+      const ref = row.previews?.find((p) => p.target === k)?.ref;
+      return `${ref === undefined ? '' : `${ref} 行目の `}${keyLabel(k)} に当てる`;
+    };
+    opts = [['', '取り込まない'], ...(row.candidates ?? []).map((k) => /** @type {[string, string]} */ ([`t:${k}`, at(k)])), ['add', '新しい語として足す']];
   }
   if (!opts.length) return '';
   const c = choices[row.ref];
@@ -282,11 +292,12 @@ function selectHtml(row) {
 
 /**
  * @param {Conflict[]} conflicts
+ * @param {string} where 当て先の呼び名(「単語帳」、入力の先の行なら「1 行目」)
  * @returns {string}
  */
-function conflictsHtml(conflicts) {
-  return `<div class="meta">食い違い(既定では単語帳の値を残す):</div><ul class="conf">${conflicts
-    .map((c) => `<li>${fieldLabel(c.field)}: 単語帳「${esc(c.current)}」 ／ 入力「${esc(c.incoming)}」</li>`).join('')}</ul>`;
+function conflictsHtml(conflicts, where) {
+  return `<div class="meta">食い違い(既定では${esc(where)}の値を残す):</div><ul class="conf">${conflicts
+    .map((c) => `<li>${fieldLabel(c.field)}: ${esc(where)}「${esc(c.current)}」 ／ ${where === '単語帳' ? '入力' : 'この行'}「${esc(c.incoming)}」</li>`).join('')}</ul>`;
 }
 
 /** @param {string} f */

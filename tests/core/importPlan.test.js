@@ -189,7 +189,7 @@ test('入力の中の重複・変わらない語・読めない行は取り込�
   const existing = book();
   const p = plan(existing, 'tentative\ntentative\nallocate | 動\n割り当てる | 動\n以下です。');
   assert.deepEqual(p.rows.map((r) => r.action), ['add', 'duplicate', 'same', 'error', 'skipped']);
-  assert.deepEqual(p.counts, { add: 1, merge: 0, same: 1, ambiguous: 0, duplicate: 1, error: 1, skipped: 1 });
+  assert.deepEqual(p.counts, { add: 1, merge: 0, same: 1, join: 0, ambiguous: 0, duplicate: 1, error: 1, skipped: 1 });
   const r = applyImport(existing, confirmPlan(p));
   assert.deepEqual([r.added, r.updated, r.words.length], [1, 0, 5]);
 });
@@ -197,6 +197,92 @@ test('入力の中の重複・変わらない語・読めない行は取り込�
 test('同じ語を品詞あり・なしで続けて入れても 1 つにまとまる', () => {
   const p = plan([{ en: 'itinerary' }], 'itinerary | 名 | 旅程表\nitinerary\nitinerary | 名');
   assert.deepEqual(p.rows.map((r) => r.action), ['merge', 'duplicate', 'duplicate']);
+});
+
+// --- 同じ語かもしれない行(案 D。Docs/20_ImportFormat.md §4) -----------------------------
+
+test('入力の中で品詞の無い行と品詞のある行が並ぶと、後の行を「同じ語かも」にし、既定では先の行に当てて 1 語にする', () => {
+  // 品詞なし → 品詞あり: 先の行の語の品詞を埋める
+  const a = plan([], 'itinerary | | 旅程表\nitinerary | 名 | | We checked the itinerary.');
+  assert.deepEqual(a.rows.map((r) => r.action), ['add', 'join']);
+  assert.deepEqual([a.rows[1].target, a.rows[1].targetRef], ['itinerary|', 1]);
+  assert.deepEqual(a.rows[1].fills, ['pos', 'ex']);
+  assert.match(a.rows[1].warnings.join(), /同じ語かもしれない/);
+  const ra = applyImport([], confirmPlan(a));
+  assert.deepEqual(ra.words, [{ en: 'itinerary', pos: '名', ja: '旅程表', ex: 'We checked the itinerary.' }]);
+  assert.deepEqual([ra.added, ra.updated, ra.addedKeys, ra.rekeys], [1, 0, ['itinerary|名'], []], '足した語の鍵が変わっただけ(記録の付け替えは無い)');
+  // 品詞あり → 品詞なし: 先の行の語の空欄を埋める。食い違う意味は先の行の値を残す
+  const b = plan([], 'itinerary | 名 | 旅程表\nitinerary | | 旅行日程 | | | 補足');
+  assert.deepEqual(b.rows.map((r) => r.action), ['add', 'join']);
+  assert.deepEqual(b.rows[1].conflicts, [{ field: 'ja', current: '旅程表', incoming: '旅行日程' }]);
+  assert.deepEqual(applyImport([], confirmPlan(b)).words, [{ en: 'itinerary', pos: '名', ja: '旅程表', note: '補足' }]);
+});
+
+test('「同じ語かも」の行は、別の語として足す・外すも選べる', () => {
+  const p = plan([], 'itinerary | | 旅程表\nitinerary | 名 | 旅程表');
+  const added = applyImport([], confirmPlan(p, { 2: 'add' }));
+  assert.deepEqual(added.words.map((w) => w.pos ?? ''), ['', '名']);
+  assert.deepEqual([added.added, added.addedKeys], [2, ['itinerary|', 'itinerary|名']]);
+  assert.deepEqual(applyImport([], confirmPlan(p, { 2: 'skip' })).words, [{ en: 'itinerary', ja: '旅程表' }]);
+  assert.throws(() => confirmPlan(p, { 2: 'overwrite' }), /選べません/);
+});
+
+test('「同じ語かも」の行が当てる先の行は、その行を当てたまま外せない(黙って取り込まない行を作らない)', () => {
+  const p = plan([], 'itinerary | | 旅程表\nitinerary | 名');
+  assert.throws(() => confirmPlan(p, { 1: 'skip' }), /2 番の行は 1 番の行の語に当てる/);
+  assert.equal(applyImport([], confirmPlan(p, { 1: 'skip', 2: 'add' })).words.length, 1);
+  assert.equal(applyImport([], confirmPlan(p, { 1: 'skip', 2: 'skip' })).words.length, 0);
+});
+
+test('「同じ語かも」は品詞の有無だけが違うときに限る(品詞の違う語は INV-4 のとおり別の語。当てた行へ 2 つ目は当てない)', () => {
+  const p = plan([], 'secure | 形 | 安全な\nsecure | 動 | 確保する');
+  assert.deepEqual(p.rows.map((r) => r.action), ['add', 'add']);
+  // 品詞なしの行に 1 つ当てたら、同じ綴りの次の品詞ありの行は別の語
+  const q = plan([], 'run | | 走る\nrun | 動\nrun | 名 | 経営');
+  assert.deepEqual(q.rows.map((r) => r.action), ['add', 'join', 'add']);
+  assert.deepEqual(applyImport([], confirmPlan(q)).words.map((w) => w.pos), ['動', '名']);
+  // 単語帳に同じ綴りの語があれば、今までどおり単語帳の語に当てる(入力の行には当てない)
+  const r = plan([{ en: 'run', pos: '動' }], 'run | 名\nrun | | 走る');
+  assert.deepEqual(r.rows.map((x) => x.action), ['add', 'merge']);
+});
+
+test('品詞の無い行に、品詞のある同じ綴りの行が入力の中に複数あれば、当て先を選ばせる(既定では取り込まない)', () => {
+  const p = plan([], 'secure | 形 | 安全な\nsecure | 動 | 確保する\nsecure | | | | | 補足');
+  const row = p.rows[2];
+  assert.equal(row.action, 'ambiguous');
+  assert.deepEqual(row.candidates, ['secure|形', 'secure|動']);
+  assert.deepEqual(row.previews?.map((x) => [x.target, x.ref]), [['secure|形', 1], ['secure|動', 2]]);
+  assert.match(row.warnings.join(), /同じ語かもしれない/);
+  assert.equal(applyImport([], confirmPlan(p)).words.length, 2);
+  const r = applyImport([], confirmPlan(p, { 3: { target: 'secure|動' } }));
+  assert.deepEqual([r.words[1].note, r.added, r.updated], ['補足', 2, 0]);
+  assert.throws(() => confirmPlan(p, { 2: 'skip', 3: { target: 'secure|動' } }), /外せません/);
+});
+
+test('同綴り・同品詞で意味だけ違う行: 別の意味として「；」で並べる・既存に「、」で足すを選べる(既定は単語帳の値を残す)', () => {
+  const existing = [{ en: 'run', pos: '動', ja: '走る' }];
+  const p = plan(existing, 'run | 動 | 経営する');
+  assert.deepEqual(p.rows[0].conflicts?.map((x) => x.field), ['ja']);
+  assert.equal(applyImport(existing, confirmPlan(p)).words[0].ja, '走る');
+  const sense = applyImport(existing, confirmPlan(p, { 1: 'sense' }));
+  assert.deepEqual([sense.words[0].ja, sense.updated, sense.rekeys], ['走る；経営する', 1, []]);
+  assert.equal(applyImport(existing, confirmPlan(p, { 1: 'extend' })).words[0].ja, '走る、経営する');
+  // 既にある語義は重ねて足さない
+  const overlap = plan(existing, 'run | 動 | 走る、経営する');
+  assert.equal(applyImport(existing, confirmPlan(overlap, { 1: 'sense' })).words[0].ja, '走る；経営する');
+  // 入力の語義がすべて新しければ、入力の意味をそのまま付ける(入力の中の区切りは残す)
+  const fresh = plan(existing, 'run | 動 | 経営する；運営する');
+  assert.equal(applyImport(existing, confirmPlan(fresh, { 1: 'extend' })).words[0].ja, '走る、経営する；運営する');
+});
+
+test('意味を足す選択は意味だけを変え、他の食い違う項目は単語帳の値を残す。意味が食い違わない行には選べない', () => {
+  const existing = [{ en: 'run', pos: '動', ja: '走る', note: '自分のメモ' }];
+  const p = plan(existing, 'run | 動 | 経営する | | | AI の補足');
+  const w = applyImport(existing, confirmPlan(p, { 1: 'extend' })).words[0];
+  assert.deepEqual([w.ja, w.note], ['走る、経営する', '自分のメモ']);
+  const noJa = plan(existing, 'run | 動 | 走る | | | AI の補足');
+  assert.throws(() => confirmPlan(noJa, { 1: 'sense' }), /選べません/);
+  assert.throws(() => confirmPlan(plan(existing, 'walk | 動 | 歩く'), { 1: 'extend' }), /選べません/);
 });
 
 test('外した行は取り込まない', () => {

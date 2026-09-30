@@ -145,6 +145,25 @@ test('当て先の決まらない行は、既定では取り込まず、選ん�
   ]);
 });
 
+test('品詞の有無だけが違う同じ綴りの行は既定で 1 語にまとめ、意味だけが違う行は別の意味として並べられる', async ({ page }) => {
+  await page.goto('/');
+  await addByForm(page, 'run', '動', '走る');
+
+  await page.getByLabel('貼り付ける内容').fill('itinerary | | 旅程表\nitinerary | 名\nrun | 動 | 経営する');
+  await page.getByRole('button', { name: '確認表を作る' }).click();
+  const join = planRow(page, 'itinerary').nth(1);
+  await expect(join.locator('.act')).toHaveText('同じ語かも');
+  await expect(join).toContainText('同じ語かもしれない');
+  await expect(join.locator('select')).toHaveValue('');
+  await planRow(page, 'run').locator('select').selectOption({ label: '別の意味として追加(；で並べる)' });
+  await page.getByRole('button', { name: '確定して取り込む' }).click();
+  await expect(page.locator('#toast')).toContainText('取り込みました(追加 1 語・更新 1 語)');
+  expect(await words(page)).toEqual([
+    { en: 'run', pos: '動', ja: '走る；経営する' },
+    { en: 'itinerary', pos: '名', ja: '旅程表' },
+  ]);
+});
+
 test('空の貼り付け欄には例を灰色で見せ(値は空)、「例を入れる」で入れた例はそのまま取り込める。入力があるときは例で消さない', async ({ page }) => {
   await page.goto('/');
   const box = page.getByLabel('貼り付ける内容');
