@@ -2,6 +2,7 @@
 // アンケートを実際には開かない(外部へつながない)。リンクの行き先と開き方だけを見る。
 import { test, expect } from '@playwright/test';
 import { SURVEY_URL } from '../../app/links.js';
+import { APP_VERSION } from '../../app/version.js';
 import { tab, fits } from './helpers.js';
 
 test('Q&A タブ: 質問を開ける・欄の開閉がタブを移っても残る・アンケートは新しいタブで開くリンク', async ({ page }) => {
@@ -26,6 +27,8 @@ test('Q&A タブ: 質問を開ける・欄の開閉がタブを移っても残�
   await expect(link).toHaveAttribute('href', SURVEY_URL);
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('rel', /noopener/);
+  // 不具合の報告に添えられるよう、アプリの版を出す
+  await expect(page.locator('#app-version')).toContainText(APP_VERSION);
 
   // 閉じた欄はタブを移って戻っても閉じたまま
   await qaPanel.locator('summary').first().click();
