@@ -1,0 +1,13 @@
+```
+allocate | 動 | 割り当てる、配分する | The manager allocated extra budget to the marketing project. | 管理職はマーケティングプロジェクトに追加の予算を割り当てた。 | allocate A for B（BのためにAを割り当てる）
+itinerary | 名 | 旅程表、旅行計画 | Please check the attachment for the detailed travel itinerary. | 詳細な旅行旅程表については添付ファイルを確認してください。 | flight itinerary（航空便の旅程）
+reimburse | 動 | 払い戻す、返金する | The company will reimburse employees for travel expenses. | 会社は従業員に出張旅費を払い戻す。 | reimburse A for B（Bに対してAを返金する）
+tentative | 形 | 仮の、試行的な | We have reached a tentative agreement on the new contract. | 新しい契約に関して仮の合意に達した。 | tentative schedule（仮のスケジュール）
+comply with | 動詞句 | 従う、遵守する | All staff must comply with the new safety regulations. | 全職員は新しい安全規制に従わなければならない。 | 類：abide by
+on behalf of | 前置詞句 | ～を代表して、～の代わりに | She accepted the award on behalf of the entire team. | 彼女はチーム全体を代表して賞を受け取った。 | 
+in advance | 副詞句 | 事前に、前もって | Tickets must be purchased in advance via the website. | チケットはウェブサイト経由で事前に購入しなければならない。 | 類：ahead of time
+secure | 動/形 | 確保する、獲得する / 安全な | The company secured a contract with a major supplier. | その会社は大手の供給業者との契約を確保した。 | secure a position（職を確保する）
+estimate | 名/動 | 見積もり / 見積もる | We received a cost estimate for the office renovation. | オフィスの改装に関する費用見積もりを受け取った。 | 類：quote
+be eligible for | 形容詞句 | ～の資格がある、～を受ける権利がある | Full-time employees are eligible for paid leave after six months. | フルタイムの従業員は6か月後に有給休暇を得る資格がある。 | be eligible to do（～する資格がある）
+
+```

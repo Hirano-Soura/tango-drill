@@ -1,0 +1,12 @@
+```
+allocate | 動 | 割り当てる、配分する | The manager will allocate more funds to the marketing department next quarter. | 部長は来期、マーケティング部により多くの資金を割り当てる予定だ。 | allocate A to B（AをBに割り当てる）／類義語: assign, distribute／名詞形: allocation
+itinerary | 名 | 旅程、旅行日程表 | Please check the attached itinerary for your flight and hotel details. | 添付の旅程表でフライトとホテルの詳細をご確認ください。 | 類義語: schedule, travel plan／a detailed itinerary（詳細な旅程）
+reimburse | 動 | 払い戻す、返済する、立て替え分を精算する | The company will reimburse you for all travel expenses. | 会社は出張費用をすべて払い戻します。 | reimburse A for B（AにBを払い戻す）／名詞形: reimbursement
+tentative | 形 | 仮の、暫定的な | We have made a tentative reservation for the conference room on Friday. | 金曜日の会議室を仮予約しました。 | 副詞形: tentatively／a tentative schedule（暫定的な日程）／反意語: final, definite
+comply with | 動詞句 | （規則・要求などに）従う、準拠する | All employees must comply with the new safety regulations. | 全従業員は新しい安全規則に従わなければならない。 | 名詞形: compliance／類義語: follow, abide by, conform to
+on behalf of | 前置詞句 | ～に代わって、～を代表して | I am writing on behalf of the sales team to thank you for your support. | 営業チームを代表して、ご支援に感謝申し上げます。 | on one's behalf とも言う／類義語: representing
+in advance | 前置詞句 | 前もって、あらかじめ | Tickets must be purchased in advance to get the discount. | 割引を受けるには、チケットを事前に購入しなければならない。 | 類義語: beforehand, ahead of time／thank you in advance（前もってお礼申し上げます）
+secure | 動/形 | 確保する、獲得する／安全な、確実な | The firm secured a contract with a major supplier. | その会社は大手供給業者との契約を獲得した。 | 名詞形: security／動詞では「苦労して手に入れる」のニュアンス／類義語: obtain, acquire
+estimate | 名/動 | 見積もり、概算／見積もる、推定する | Could you send me an estimate for the repair work? | 修理作業の見積もりを送っていただけますか。 | 発音: 名詞 [éstəmət]、動詞 [éstəmèit]／a rough estimate（大まかな見積もり）／類義語: quote
+be eligible for | 動詞句 | ～の資格がある、～を受ける権利がある | Full-time employees are eligible for health insurance after three months. | 正社員は3か月後に健康保険の資格を得られる。 | be eligible to do（～する資格がある）／名詞形: eligibility／類義語: be qualified for, be entitled to
+```
