@@ -4,7 +4,7 @@
 
 import { esc, foldOpen, bindFolds } from '../dom.js';
 import { SURVEY_URL } from '../links.js';
-import { APP_VERSION } from '../version.js';
+import { VERSION } from '../../core/version.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 
@@ -91,7 +91,7 @@ export function render(ctx) {
         氏名・学籍番号など、個人を特定できることは書かないでください。</p>
       <div class="rowbtns left"><a class="linkbtn primary" href="${esc(SURVEY_URL)}" target="_blank" rel="noopener noreferrer">アンケートを開く</a></div>
       <p class="hint">回答はフォームに入力した内容だけが Google フォームに送られます。このアプリの単語帳や学習の記録は送られません。</p>
-      <p class="meta" id="app-version">アプリの版: ${esc(APP_VERSION)}(不具合を書くときに添えてください)</p>
+      <p class="meta" id="qa-version">アプリのバージョン: ${esc(VERSION)}(不具合を書くときに添えてください)</p>
     </details>`;
   bindFolds(ctx.root);
 }
