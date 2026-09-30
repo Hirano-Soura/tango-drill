@@ -4,7 +4,7 @@
 /** @typedef {import('./storage.js').Settings} Settings */
 
 /**
- * @typedef {'study' | 'list' | 'add' | 'stats' | 'settings'} TabId
+ * @typedef {'study' | 'list' | 'add' | 'stats' | 'settings' | 'qa'} TabId
  */
 
 /**
