@@ -5,6 +5,7 @@
 import { esc, actionOf, download } from '../dom.js';
 import { backupText, parseBackup } from '../../core/backup.js';
 import { countBook } from '../../core/book.js';
+import { VERSION, isPreRelease } from '../../core/version.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/book.js').Book} Book */
@@ -43,6 +44,7 @@ export function render(ctx) {
     <h2>データについて</h2>
     <p class="hint">単語帳と学習の記録は、この端末のブラウザの中にだけ保存され、外部には送信されません。
       ブラウザのデータを消すと単語帳も消えます。</p>
+    <p class="hint" id="app-version">バージョン ${VERSION}${isPreRelease(VERSION) ? '(pre-release)' : ''}</p>
   </section>`;
 
   const box = /** @type {HTMLInputElement} */ (ctx.root.querySelector('#useBuiltin'));
