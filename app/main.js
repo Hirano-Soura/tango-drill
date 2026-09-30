@@ -1,4 +1,4 @@
-// 画面の入口: 保存層を開き、5 つのタブを切り替える。単語帳を変える操作は commit を通す
+// 画面の入口: 保存層を開き、6 つのタブを切り替える。単語帳を変える操作は commit を通す
 // (バックアップからの復元とその取り消しだけは restore / undoRestore を通す)。
 // 「元に戻す」は直前の追加・編集・削除・取り込みの確定だけを 1 段取り消す(次に単語帳を変えると消える)。
 
@@ -9,6 +9,7 @@ import * as list from './tabs/list.js';
 import * as add from './tabs/add.js';
 import * as stats from './tabs/stats.js';
 import * as settings from './tabs/settings.js';
+import * as qa from './tabs/qa.js';
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
 /** @typedef {import('./dom.js').TabId} TabId */
@@ -22,6 +23,7 @@ const TABS = [
   ['add', '追加', add],
   ['stats', '記録', stats],
   ['settings', '設定', settings],
+  ['qa', 'Q&A', qa],
 ];
 
 const content = /** @type {HTMLElement} */ (document.getElementById('content'));
@@ -98,7 +100,7 @@ async function main() {
 
   function render() {
     nav.innerHTML = TABS.map(([id, label]) =>
-      `<button role="tab" data-tab="${id}" aria-selected="${app.tab === id}" class="${app.tab === id ? 'active' : ''}">${label}</button>`).join('');
+      `<button role="tab" data-tab="${id}" aria-selected="${app.tab === id}" class="${app.tab === id ? 'active' : ''}">${esc(label)}</button>`).join('');
     const tab = TABS.find(([id]) => id === app.tab) ?? TABS[0];
     content.onclick = null;
     content.onchange = null;

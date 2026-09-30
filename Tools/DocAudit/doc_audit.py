@@ -61,6 +61,9 @@ SHIPPED_SUFFIXES = {".js", ".mjs", ".html"}
 INV1_ALLOW: dict[tuple[str, str], str] = {
     ("playwright.config.js", "external URL"):
         "screen-test config; the app never loads it, and the URL is the local test server on 127.0.0.1",
+    ("app/links.js", "external URL"):
+        "the improvement survey (Google Forms) the user opens in a new tab from the Q&A tab; the app makes no request, "
+        "and no word or record is put in the URL. Every external URL of the app is kept in this one file",
 }
 
 
