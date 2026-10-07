@@ -17,11 +17,14 @@ const EDGE_LIKE = [
 
 /**
  * 音声合成を偽物に差し替える。voices が null なら音声合成を持たないブラウザにする。
+ * late なら、一覧は window.__deliver() を呼ぶまで空で、呼ぶと voiceschanged を出す(一覧があとから届くブラウザ)。
+ * 読ませた文は window.__spoken に、止める(cancel)と読む(speak)の順は window.__log に残す。
  * @param {Page} page
  * @param {{ name: string, lang: string, localService: boolean }[] | null} voices
+ * @param {{ late?: boolean }} [opts]
  */
-async function fakeSpeech(page, voices) {
-  await page.addInitScript((list) => {
+async function fakeSpeech(page, voices, opts = {}) {
+  await page.addInitScript(([list, late]) => {
     const w = /** @type {any} */ (window);
     if (list === null) {
       Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true });
@@ -29,21 +32,33 @@ async function fakeSpeech(page, voices) {
       return;
     }
     const voiceObjs = list.map((v) => ({ ...v, voiceURI: v.name, default: false }));
+    let delivered = !late;
     w.__spoken = [];
+    w.__log = [];
     const synth = new EventTarget();
     Object.assign(synth, {
-      getVoices: () => voiceObjs,
-      speak: (/** @type {any} */ u) => w.__spoken.push({ text: u.text, voice: u.voice?.name, lang: u.lang, rate: u.rate }),
-      cancel: () => {},
+      getVoices: () => (delivered ? voiceObjs : []),
+      speak: (/** @type {any} */ u) => {
+        w.__spoken.push({ text: u.text, voice: u.voice?.name, lang: u.lang, rate: u.rate });
+        w.__log.push('speak');
+      },
+      cancel: () => w.__log.push('cancel'),
     });
+    w.__deliver = () => {
+      delivered = true;
+      synth.dispatchEvent(new Event('voiceschanged'));
+    };
     class Utterance {
       /** @param {string} text */
       constructor(text) { this.text = text; this.voice = null; this.lang = ''; this.rate = 1; }
     }
     Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
     Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: Utterance, configurable: true });
-  }, voices);
+  }, /** @type {const} */ ([voices, !!opts.late]));
 }
+
+/** @param {Page} page @returns {Promise<string | undefined>} 最後の音声合成の操作 */
+const lastOp = (page) => page.evaluate(() => /** @type {any} */ (window).__log.at(-1));
 
 /** @param {Page} page @returns {Promise<Spoken[]>} */
 const spoken = (page) => page.evaluate(() => /** @type {any} */ (window).__spoken);
@@ -168,4 +183,96 @@ test('読み上げを持たないブラウザでは、ボタンを出さず、�
   await expect(page.getByRole('button', { name: '発音' })).toHaveCount(0);
   await tab(page, '設定').click();
   await expect(page.locator('#speech-note')).toContainText('このブラウザは読み上げに対応していません');
+});
+
+/**
+ * 設定を保存層へそのまま置いて開き直す(音声の一覧が無い間は、画面から自動読み上げを入れられないため)。
+ * @param {Page} page
+ * @param {Partial<import('../../app/storage.js').Settings>} settings
+ */
+async function seedSettings(page, settings) {
+  await page.evaluate(async (x) => {
+    const path = '/app/storage.js';
+    const { openStorage, DEFAULT_SETTINGS } = /** @type {typeof import('../../app/storage.js')} */ (await import(path));
+    const s = await openStorage(indexedDB);
+    await s.saveSettings({ ...DEFAULT_SETTINGS, ...x });
+    s.close();
+  }, settings);
+  await page.reload();
+}
+
+test('読んでいる途中でも、タブを移る・中断する・やめると止める', async ({ page }) => {
+  await fakeSpeech(page, EDGE_LIKE);
+  await page.goto('/');
+  await seedBook(page, BOOK());
+  await startOldest(page, 'choice');
+  await page.getByRole('button', { name: '発音' }).click();
+  expect(await lastOp(page)).toBe('speak');
+  await page.getByRole('button', { name: '中断' }).click();
+  expect(await lastOp(page)).toBe('cancel');
+  await page.getByRole('button', { name: '続きから再開' }).click();
+  await page.getByRole('button', { name: '発音' }).click();
+  expect(await lastOp(page)).toBe('speak');
+  await tab(page, '単語帳').click();
+  expect(await lastOp(page)).toBe('cancel');
+  // やめる: カードの最後の 1 枚を読ませてから、見終わりの画面で「条件を変える」
+  await tab(page, '学習').click();
+  await page.getByRole('button', { name: '中断' }).click();
+  await page.getByRole('button', { name: 'やめて条件を変える' }).click();
+  await startOldest(page, 'card');
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '次へ →' }).click();
+  await page.getByRole('button', { name: '発音' }).click();
+  await page.getByRole('button', { name: '次へ →' }).click();
+  expect(await lastOp(page)).toBe('speak');
+  await page.getByRole('button', { name: '条件を変える' }).click();
+  expect(await lastOp(page)).toBe('cancel');
+});
+
+test('音声の一覧があとから届くと、学習タブと設定タブを描き直す。届く前に出した問題は、届いたときに自動で読む', async ({ page }) => {
+  await fakeSpeech(page, EDGE_LIKE, { late: true });
+  await page.goto('/');
+  await seedBook(page, BOOK());
+  await seedSettings(page, { speechAuto: true });
+  await startOldest(page, 'choice');
+  await expect(page.getByRole('button', { name: '発音' })).toBeDisabled();
+  expect(await spoken(page)).toEqual([]);
+  await page.evaluate(() => /** @type {any} */ (window).__deliver());
+  await expect(page.getByRole('button', { name: '発音' })).toBeEnabled();
+  expect((await spoken(page)).map((s) => s.text)).toEqual(['be aware of']);
+  // 設定タブも、届いた一覧で描き直す
+  await page.reload();
+  await tab(page, '設定').click();
+  await expect(page.locator('#speech-note')).toContainText('使える英語の音声がありません');
+  await page.evaluate(() => /** @type {any} */ (window).__deliver());
+  await expect(page.getByLabel('音声', { exact: true }).locator('option')).toHaveCount(3);
+});
+
+test('自動読み上げ: カードで前へ戻ると、戻った問題をまた読む', async ({ page }) => {
+  await fakeSpeech(page, EDGE_LIKE);
+  await page.goto('/');
+  await seedBook(page, BOOK());
+  await seedSettings(page, { speechAuto: true });
+  await startOldest(page, 'card');
+  await page.getByRole('button', { name: '次へ →' }).click();
+  await expect(page.locator('.stem')).toHaveText('allocate');
+  await page.getByRole('button', { name: '← 前へ' }).click();
+  await expect(page.locator('.stem')).toHaveText('be aware of A');
+  expect((await spoken(page)).map((s) => s.text)).toEqual(['be aware of', 'allocate', 'be aware of']);
+});
+
+test('自動読み上げ: 切のときに出した問題は、途中で入れても読まない。次の問題から読む', async ({ page }) => {
+  await fakeSpeech(page, EDGE_LIKE);
+  await page.goto('/');
+  await seedBook(page, BOOK());
+  await startOldest(page, 'choice');
+  await tab(page, '設定').click();
+  await page.getByLabel('問題を出したときに見出し語を自動で読み上げる').check();
+  await tab(page, '学習').click();
+  await expect(page.locator('.stem')).toHaveText('be aware of A');
+  expect(await spoken(page)).toEqual([]);
+  await page.getByRole('button', { name: 'わかる' }).click();
+  await page.getByRole('button', { name: '～に気づいている' }).click();
+  await page.getByRole('button', { name: '次の問題 →' }).click();
+  await expect(page.locator('.stem')).toHaveText('allocate');
+  expect((await spoken(page)).map((s) => s.text)).toEqual(['allocate']);
 });

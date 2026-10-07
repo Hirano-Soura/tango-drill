@@ -1,7 +1,7 @@
 // 読み上げの規則(core/speech.js。Docs/24_Speech.md)。INV-1: インターネット経由の音声を選ばない。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { englishVoices, pickVoice, remoteEnglishCount, speechText, normLang, isEnglish, RATES, DEFAULT_RATE } from '../../core/speech.js';
+import { englishVoices, pickVoice, remoteEnglishCount, speechText, normLang, isEnglish, RATES, DEFAULT_RATE, rateOf } from '../../core/speech.js';
 
 /** @typedef {import('../../core/speech.js').VoiceLike} VoiceLike */
 
@@ -73,6 +73,12 @@ test('Android の Chrome の下線区切り(en_US)と、地域の無い en も�
 test('速さ: 既定は ふつう(0.9)で、選択肢に入っている', () => {
   assert.equal(DEFAULT_RATE, 0.9);
   assert.ok(RATES.some(([r]) => r === DEFAULT_RATE));
+  // 保存してある速さは選択肢の値にそろえる(選択肢に無い値は既定。画面の選択と読む速さをずらさない)
+  assert.equal(rateOf(0.7), 0.7);
+  assert.equal(rateOf(1.1), 1.1);
+  assert.equal(rateOf(0.85), DEFAULT_RATE);
+  assert.equal(rateOf('0.7'), DEFAULT_RATE);
+  assert.equal(rateOf(undefined), DEFAULT_RATE);
 });
 
 test('読む文: 単語はそのまま。句表現の目印は読まないか、読める語に置き換える', () => {

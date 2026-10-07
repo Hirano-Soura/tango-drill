@@ -2,7 +2,7 @@
 // どの音声で読むか・何を読むかは core/speech.js が決める。端末内の音声だけを使い、単語や例文を外部へ送らない(INV-1)。
 // 規則とブラウザ・OS ごとの違いは Docs/24_Speech.md。
 
-import { englishVoices, pickVoice, remoteEnglishCount, normLang, DEFAULT_RATE } from '../core/speech.js';
+import { englishVoices, pickVoice, remoteEnglishCount, normLang, rateOf } from '../core/speech.js';
 
 /** @typedef {import('./storage.js').Settings} Settings */
 
@@ -51,7 +51,7 @@ export function speak(text, settings) {
   const u = new SpeechSynthesisUtterance(text);
   u.voice = v;
   u.lang = normLang(v.lang).replace(/-([a-z]+)$/, (_, r) => '-' + r.toUpperCase());
-  u.rate = Number.isFinite(settings.speechRate) && settings.speechRate > 0 ? settings.speechRate : DEFAULT_RATE;
+  u.rate = rateOf(settings.speechRate);
   synth.cancel();
   synth.speak(u);
   return true;

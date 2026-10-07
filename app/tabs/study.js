@@ -233,14 +233,15 @@ function sayButton(ctx, what, label) {
 /**
  * 設定で自動読み上げを入れていれば、問題を出したときに見出し語を 1 度だけ読む
  * (答えたあとや再開での描き直しでは読み直さない。カードで前へ戻ると、戻った問題をまた読む)。
+ * 自動読み上げが切のときに出した問題は、あとで入れても読まない(読んだ扱いにする)。
+ * 音声の一覧がまだ届かず読めなかった問題は読んだ扱いにせず、一覧が届いた描き直しで読む。
  * @param {Ctx} ctx
  * @param {Quiz} qz
  * @param {Word} cur
  */
 function autoSay(ctx, qz, cur) {
-  if (!ctx.settings.speechAuto || qz.said === qz.idx) return;
-  qz.said = qz.idx;
-  speech.speak(speechText(cur.en), ctx.settings);
+  if (qz.said === qz.idx) return;
+  if (!ctx.settings.speechAuto || speech.speak(speechText(cur.en), ctx.settings)) qz.said = qz.idx;
 }
 
 /**

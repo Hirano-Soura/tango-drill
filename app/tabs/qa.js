@@ -1,5 +1,5 @@
 // Q&A タブ: よくある質問と、改善アンケート(Google フォーム)へのリンク。追加タブと同じ開閉できる欄に並べる。
-// 答えはアプリの今の動きを書く。動きを変えたら、ここの答えも直す(規則の出どころは Docs/21_Quiz.md・22_Storage.md・23_Screens.md)。
+// 答えはアプリの今の動きを書く。動きを変えたら、ここの答えも直す(規則の出どころは Docs/21_Quiz.md・22_Storage.md・23_Screens.md・24_Speech.md)。
 // アンケートは新しいタブで開くだけで、このアプリからは何も送らない(INV-1。URL は app/links.js)。
 
 import { esc, foldOpen, bindFolds } from '../dom.js';

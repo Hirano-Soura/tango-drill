@@ -6,7 +6,7 @@ import { esc, actionOf, download } from '../dom.js';
 import { backupText, parseBackup } from '../../core/backup.js';
 import { countBook } from '../../core/book.js';
 import { VERSION, isPreRelease } from '../../core/version.js';
-import { RATES } from '../../core/speech.js';
+import { RATES, rateOf } from '../../core/speech.js';
 import * as speech from '../speech.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
@@ -119,7 +119,7 @@ function speechPanel(ctx) {
   const chosenOk = list.some((v) => v.voiceURI === s.speechVoice);
   const voiceOpts = [['', `自動${list[0] ? `(${list[0].name})` : ''}`], ...list.map((v) => [v.voiceURI, `${v.name}(${v.lang})`])]
     .map(([val, label]) => `<option value="${esc(val)}"${val === (chosenOk ? s.speechVoice : '') ? ' selected' : ''}>${esc(label)}</option>`).join('');
-  const rateOpts = RATES.map(([r, label]) => `<option value="${r}"${r === s.speechRate ? ' selected' : ''}>${label}</option>`).join('');
+  const rateOpts = RATES.map(([r, label]) => `<option value="${r}"${r === rateOf(s.speechRate) ? ' selected' : ''}>${label}</option>`).join('');
   const note = !list.length
     ? `この端末のブラウザには、使える英語の音声がありません${remote ? `(インターネット経由の音声が ${remote} 個ありますが、単語を外部へ送らないために使いません)` : ''}。
       端末の設定で英語の音声を追加するか、別のブラウザで開いてください。Windows は「設定」→「時刻と言語」→「音声認識」の「音声」で英語(米国)の音声を追加できます。`

@@ -17,6 +17,16 @@ export const RATES = Object.freeze([[0.7, 'ゆっくり'], [0.9, 'ふつう'], [
 export const DEFAULT_RATE = 0.9;
 
 /**
+ * 保存してある速さを、選択肢の値にそろえる。選択肢に無い値(手で書き換えた値・選択肢を変える前の値)は既定にする
+ * (画面の選択と、実際に読む速さをずらさないため)。
+ * @param {unknown} rate
+ * @returns {number}
+ */
+export function rateOf(rate) {
+  return RATES.some(([r]) => r === rate) ? /** @type {number} */ (rate) : DEFAULT_RATE;
+}
+
+/**
  * 言語タグをそろえる(下線をハイフンに、小文字に)。
  * @param {string} lang
  * @returns {string}

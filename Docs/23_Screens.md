@@ -91,7 +91,7 @@
 - 記録の CSV には、Excel で文字化けしないよう BOM を付けて保存させる(`statsCsv` は付けない。[21_Quiz.md](21_Quiz.md) §6)
 - 送信はしない。ファイルの保存は端末内で作ってダウンロードさせる(INV-1)
 - アプリの外へのリンク(改善アンケート)は、利用者が押して新しいタブで開くだけにする(`target="_blank"`・`rel="noopener noreferrer"`)。
-  アプリからは要求を出さず、単語や記録を URL に入れない。URL は `app/links.js` にだけ置き、`doc_audit.py` の許可リスト `INV1_ALLOW` はこのファイルだけを許す(INV-1)。
+  アプリからは要求を出さず、単語や記録を URL に入れない。URL は `app/links.js` にだけ置き、`doc_audit.py` の許可リスト `INV1_ALLOW` が外部の URL を許すアプリのファイルはこれだけ(INV-1。音声合成の呼び出しを `app/speech.js` だけに許す行は別にある)。
   フォームの共有用 URL に付く追跡用の値(`usp`・`ouid`)は外して置く(`ouid` はフォームの持ち主の Google アカウントを指す)
 - Q&A の答えはアプリの今の動きを書く。答えに当たる動き(出題・保存・取り込みなど)を変えたら、`app/tabs/qa.js` の答えも直す
 
