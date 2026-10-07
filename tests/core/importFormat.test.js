@@ -277,10 +277,6 @@ test('品詞に添えた自他の印を trans に移す(簡易形式で自他を
     'board | 動(自他) | 搭乗する',
     'estimate | 名/動(他) | (名)見積もり ／ (動)見積もる',
     'recover | 動 (他・自) | (他)取り戻す ／ (自)回復する',
-    'confirm | 他動詞 | 確かめる',
-    'retire | 自動詞 | 引退する',
-    'operate | 他動詞/自動詞 | 運営する',
-    'postpone | vt | 延期する',
     'consult | 動(vt/vi) | 相談する',
   ].join('\n'));
   assert.deepEqual(words(r).map((w) => [w.en, w.pos, w.trans]), [
@@ -289,22 +285,22 @@ test('品詞に添えた自他の印を trans に移す(簡易形式で自他を
     ['board', '動', 'vt/vi'],
     ['estimate', '名/動', 'vt'],
     ['recover', '動', 'vt/vi'],
-    ['confirm', '動', 'vt'],
-    ['retire', '動', 'vi'],
-    ['operate', '動', 'vt/vi'],
-    ['postpone', '動', 'vt'],
     ['consult', '動', 'vt/vi'],
   ]);
   assert.deepEqual(r.rows.flatMap((x) => x.warnings), []);
 });
 
 test('陽性対照: 自他の印でない括弧と、動詞でない品詞に付いた印は品詞のまま残す', () => {
-  const r = parseImport(['staff | 名(集合的) | 職員', 'other | 名(他) | その他', 'meet | 動(会う) | 会う', 'tentative | 形 | 仮の'].join('\n'));
+  const r = parseImport(['staff | 名(集合的) | 職員', 'other | 名(他) | その他', 'meet | 動(会う) | 会う', 'tentative | 形 | 仮の',
+    // 単独の「他動詞」「vt」は品詞「動」に置き換えない(置き換えると鍵が変わり、保存してある単語帳で鍵が重なりうる。INV-3)
+    'confirm | 他動詞 | 確かめる', 'postpone | vt | 延期する'].join('\n'));
   assert.deepEqual(words(r).map((w) => [w.en, w.pos, w.trans]), [
     ['staff', '名(集合的)', undefined],
     ['other', '名(他)', undefined],
     ['meet', '動(会う)', undefined],
     ['tentative', '形', undefined],
+    ['confirm', '他動詞', undefined],
+    ['postpone', 'vt', undefined],
   ]);
   // 鍵(INV-4)は括弧を落とすので、印を移しても語の同一性は変わらない
   assert.equal(splitTransMark('動(他)').pos, '動');

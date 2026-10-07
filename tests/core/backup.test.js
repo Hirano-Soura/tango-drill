@@ -260,3 +260,25 @@ test('読み手の正規化で鍵が変わる語は、追加日・記録・印�
     starred: ['budget|名'],
   });
 });
+
+test('品詞に自他の印を添えて保存してあった語は、読むと自他に移り、鍵・追加日・記録・印はそのまま付く(T-5.7)', () => {
+  const data = {
+    format: 'tango-drill-backup/v2',
+    words: [
+      { en: 'recover', pos: '動(他)' },
+      // 単独の「他動詞」は品詞のまま残す(「動」に置き換えると、同じ綴りの「動」の語と鍵が重なり、全体が読めなくなる)
+      { en: 'run', pos: '他動詞' },
+      { en: 'run', pos: '動' },
+    ],
+    added: { 'recover|動': '2026-09-01', 'run|他動詞': '2026-09-02', 'run|動': '2026-09-03' },
+    records: { hist: { 'recover|動': [1], 'run|他動詞': [0] }, self: { 'recover|動': [1], 'run|他動詞': [1] }, last: {} },
+    starred: ['recover|動'],
+  };
+  const r = readBackup(data, OPTS);
+  assert.equal(r.fatal, undefined);
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.book?.words, [{ en: 'recover', pos: '動', trans: 'vt' }, { en: 'run', pos: '他動詞' }, { en: 'run', pos: '動' }]);
+  assert.deepEqual(r.book?.added, data.added);
+  assert.deepEqual(r.book?.records.hist, data.records.hist);
+  assert.deepEqual(r.book?.starred, ['recover|動']);
+});

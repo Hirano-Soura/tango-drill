@@ -9,8 +9,8 @@ import { looksEnglish } from './importFormat.js';
 /**
  * 依頼文の版。依頼文を変えたら上げる。版ごとの全文は tests/core/fixtures/ai/prompt_<版>*.txt に固定してあり、
  * 版を上げずに文面を変えるとテスト(tests/core/aiPrompt.test.js)が落ちる。
- * 返答の見本(tests/core/fixtures/ai/replies.json)はどの版への返答かを持ち、今の版でない見本はテストが落とす
- * (上げたら、見本を新しい版で採り直す)。
+ * 返答の見本(tests/core/fixtures/ai/replies.json)はどの版への返答かを持つ。上げたら見本を新しい版で採り直す
+ * (今の版への本物の見本の無い提供元はテストが todo にする。古い版の見本は、貼られうる入力として残す)。
  */
 export const AI_PROMPT_VERSION = 'v2';
 

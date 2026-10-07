@@ -376,16 +376,12 @@ const TRANS_MARKS = /** @type {Record<string, string>} */ ({
   '自他': 'vt/vi', '他自': 'vt/vi', '他/自': 'vt/vi', '自/他': 'vt/vi', '他・自': 'vt/vi', '自・他': 'vt/vi',
   'vt/vi': 'vt/vi', 'vi/vt': 'vt/vi',
 });
-/** 品詞として単独で書いた自他(区切りの間の 1 つ)→ trans。これらは品詞「動」に置き換える */
-const TRANS_TOKENS = /** @type {Record<string, string>} */ ({
-  '他動詞': 'vt', vt: 'vt', 'v.t.': 'vt',
-  '自動詞': 'vi', vi: 'vi', 'v.i.': 'vi',
-});
-
 /**
- * 品詞の欄から自他の印を取り出す。「動(他)」「名/動(自他)」の括弧と、単独の「他動詞」「vt」を読む。
- * 取り出したあとの品詞に「動」が無ければ(「名(他)」など)、自他の印とはみなさずにそのまま返す。
+ * 品詞の欄から自他の印を取り出す。「動(他)」「名/動(自他)」の括弧だけを読む。
+ * 取り出したあとの品詞の文字列に「動」が無ければ(「名(他)」など)、自他の印とはみなさずにそのまま返す(「動詞句(他)」は読む)。
  * 括弧の中身が自他の印でないもの(「名(可算)」など)は残す。
+ * 単独の「他動詞」「vt」は品詞「動」に置き換えない。語の鍵(INV-4)は括弧書きを落として作るので、括弧の印を外しても鍵は変わらないが、
+ * 単独の語を置き換えると鍵が変わり、保存してある単語帳で「run|他動詞」と「run|動」が 1 つの鍵に重なって開けなくなる(INV-3)。
  * @param {string} pos 前後の空白を落とした品詞(空でもよい)
  * @returns {{ pos: string, trans?: string }}
  */
@@ -399,14 +395,7 @@ export function splitTransMark(pos) {
     found.add(t);
     return '';
   });
-  rest = rest.replace(/[^\/・,、]+/g, (tok) => {
-    const t = TRANS_TOKENS[tok.trim().toLowerCase()];
-    if (!t) return tok;
-    found.add(t);
-    return '動';
-  });
-  // 「他動詞/自動詞」は「動」が 2 つ並ぶので 1 つにする
-  rest = rest.replace(/動(?:\s*[\/・,、]\s*動)+/g, '動').trim();
+  rest = rest.trim();
   if (!found.size || !rest.includes('動')) return { pos };
   const trans = found.has('vt/vi') || (found.has('vt') && found.has('vi')) ? 'vt/vi' : [...found][0];
   return { pos: rest, trans };

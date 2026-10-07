@@ -61,8 +61,10 @@ async function main() {
       render();
     },
     async setSettings(next) {
-      await storage.saveSettings(next);
+      // 保存を待つ前に今の設定にする。待ってからだと、続けて変えた操作(音声を選んだ直後に速さを選ぶ等)が
+      // 古い設定をもとに次の保存を作り、先の変更を消す(Docs/52_Pitfalls.md P-14)
       app.settings = next;
+      await storage.saveSettings(next);
       render();
     },
     // 復元の「元に戻す」は 1 段の「元に戻す」とは別に、保存層に退避して次の復元まで残す(Docs/22_Storage.md §3)

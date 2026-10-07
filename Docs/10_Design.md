@@ -43,6 +43,8 @@ flowchart TB
     B --- C[追加]
     C --- D[記録]
     D --- E[設定]
+    E --- H[Q&A]
+    H --- J[通知]
   end
   subgraph CORE["core/ 純粋ロジック層(ブラウザ非依存)"]
     P[取り込み形式の解析と確認表]
