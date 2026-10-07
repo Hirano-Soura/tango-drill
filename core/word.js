@@ -30,6 +30,27 @@ export const TRANS_LABEL = Object.freeze({
   'vt/vi': { mark: '他自', title: '他動詞・自動詞の両用' },
 });
 
+/**
+ * 品詞の略号と、略さない名前。取り込みの別名の正規化(importFormat.js の normalizePos)と、
+ * 単語帳の品詞での絞り込み(search.js)がこの表を引く。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const POS_NAMES = Object.freeze({
+  名: '名詞', 動: '動詞', 形: '形容詞', 副: '副詞', 前: '前置詞', 接: '接続詞', 代: '代名詞', 間: '間投詞',
+});
+
+/**
+ * POS_NAMES の逆引き(略さない名前 → 略号。「前置詞」→「前」)。
+ * @type {Readonly<Record<string, string>>}
+ */
+export const POS_CODE_OF_NAME = Object.freeze(Object.fromEntries(Object.entries(POS_NAMES).map(([code, name]) => [name, code])));
+
+/**
+ * 語の種別の呼び名。単語帳の印・件数の表示と、絞り込み(search.js)で「単語」「句表現」と打ったときに引く。
+ * @type {Readonly<{ word: string, phrase: string }>}
+ */
+export const KIND_NAMES = Object.freeze({ word: '単語', phrase: '句表現' });
+
 /** 括弧書きの補足(全角・半角)を落とす */
 const PAREN = /[（(][^）)]*[）)]/g;
 

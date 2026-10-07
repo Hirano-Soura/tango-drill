@@ -1,7 +1,7 @@
 // 取り込み形式(簡易形式・JSON)の解析と検証。ブラウザの API に触れない(INV-6)。
 // 仕様は Docs/20_ImportFormat.md。版を足す・変えるときの手順は同 §1(INV-3)。
 
-import { TRANS_VALUES } from './word.js';
+import { TRANS_VALUES, POS_CODE_OF_NAME } from './word.js';
 
 /** @typedef {import('./word.js').Word} Word */
 
@@ -81,15 +81,17 @@ const HEADER_LABELS = new Set([
 const POS_LIKE = /^(?:[名動形副前接代間冠助]|\S*句)(?:[\/・,、](?:[名動形副前接代間冠助]|\S*句))*$/;
 /** 品詞の別名。区切り(/ ・ , 、)の間の 1 つずつを置き換える */
 const POS_ALIASES = /** @type {Record<string, string>} */ ({
-  noun: '名', n: '名', '名詞': '名',
-  verb: '動', v: '動', '動詞': '動',
-  adjective: '形', adj: '形', '形容詞': '形',
-  adverb: '副', adv: '副', '副詞': '副',
-  preposition: '前', prep: '前', '前置詞': '前',
-  conjunction: '接', conj: '接', '接続詞': '接',
-  pronoun: '代', pron: '代', '代名詞': '代',
-  interjection: '間', '間投詞': '間',
+  noun: '名', n: '名',
+  verb: '動', v: '動',
+  adjective: '形', adj: '形',
+  adverb: '副', adv: '副',
+  preposition: '前', prep: '前',
+  conjunction: '接', conj: '接',
+  pronoun: '代', pron: '代',
+  interjection: '間',
   phrase: '句',
+  // 略さない日本語の名前(名詞・動詞 …)は word.js の表から
+  ...POS_CODE_OF_NAME,
 });
 
 /**

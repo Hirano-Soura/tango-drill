@@ -4,7 +4,7 @@
 
 import { esc, actionOf } from '../dom.js';
 import { posLine, jaHtml } from '../wordForm.js';
-import { keyOf, isPhrase } from '../../core/word.js';
+import { keyOf, isPhrase, KIND_NAMES } from '../../core/word.js';
 import { sessionsOf } from '../../core/book.js';
 import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record, stage2Judge, statOf } from '../../core/review.js';
 import { studyOrder } from '../../core/studyOrder.js';
@@ -103,7 +103,7 @@ function renderStart(ctx, choiceOk) {
       ${sel('source', '出題する語', SOURCES, st.source)}
       ${sel('count', '語数', COUNTS.map((c) => [c, c === 'all' ? 'すべて' : `${c} 語`]), st.count, st.source === 'mix')}
       ${sel('format', '形式', [['choice', '2 段階クイズ'], ['card', 'カード']], st.format)}
-      ${sel('kind', '種別', [['all', '単語と句表現'], ['word', '単語だけ'], ['phrase', '句表現だけ']], st.kind)}
+      ${sel('kind', '種別', [['all', `${KIND_NAMES.word}と${KIND_NAMES.phrase}`], ['word', `${KIND_NAMES.word}だけ`], ['phrase', `${KIND_NAMES.phrase}だけ`]], st.kind)}
     </div>
     <p class="meta">${about}${st.source === 'mix' ? '(語数は選べません)' : ''}</p>
     ${choiceOk ? '' : '<p class="stagebanner">語が 4 語未満で内蔵語彙を使わない設定なので、クイズはカードで出します(設定タブで変えられます)。</p>'}

@@ -7,10 +7,11 @@ import { tab } from './helpers.js';
  * @param {import('@playwright/test').Page} page
  * @param {string} en
  * @param {string} ja
+ * @param {string} [pos]
  */
-async function addWord(page, en, ja) {
+async function addWord(page, en, ja, pos = '名') {
   await page.getByLabel('見出し語(英語)').fill(en);
-  await page.getByLabel('品詞').fill('名');
+  await page.getByLabel('品詞').fill(pos);
   await page.getByLabel('意味').fill(ja);
   await page.getByRole('button', { name: '追加する' }).click();
   await expect(page.locator('#add-msg')).toContainText(`「${en}」を追加しました`);
@@ -57,4 +58,27 @@ test('絞り込み欄は変換中に作り直されず、変換した語で絞�
   await expect(page.locator('li.word .star.on')).toHaveCount(1);
   await expect(page.locator('#q')).toHaveValue('app');
   await expect(page.locator('li.word')).toHaveCount(1);
+});
+
+test('品詞の名前・「句表現」・空白区切りの AND で絞り込める(規則の細部は tests/core/search.test.js)', async ({ page }) => {
+  await page.goto('/');
+  await addWord(page, 'apple', 'リンゴ');
+  await addWord(page, 'despite', '～にもかかわらず', '前');
+  await addWord(page, 'in accordance with', '～に従って', '前置詞句');
+  await addWord(page, 'deal with', '～に対処する', '動詞句');
+  await tab(page, '単語帳').click();
+  await expect(page.locator('li.word')).toHaveCount(4);
+
+  const q = page.locator('#q');
+  /** @param {string} text @param {string[]} expected */
+  const shows = async (text, expected) => {
+    await q.fill(text);
+    await expect(page.locator('li.word .en'), text).toHaveText(expected);
+  };
+  await shows('名詞', ['apple']);
+  await shows('前置詞', ['despite', 'in accordance with']);
+  await shows('句表現', ['in accordance with', 'deal with']);
+  await shows('with 従', ['in accordance with']);
+  await shows('句表現　前置詞', ['in accordance with']);
+  await shows('動詞 リンゴ', []);
 });

@@ -1,7 +1,7 @@
 // 1 語の入力欄(追加と編集で共用)と、語の見出しの表示。
 
 import { esc, field, splitTags } from './dom.js';
-import { isPhrase, TRANS_VALUES, TRANS_LABEL } from '../core/word.js';
+import { isPhrase, TRANS_VALUES, TRANS_LABEL, KIND_NAMES } from '../core/word.js';
 
 /** @typedef {import('../core/word.js').Word} Word */
 /** @typedef {import('../core/book.js').WordInput} WordInput */
@@ -66,7 +66,7 @@ export function readWordFields(form) {
  */
 export function posLine(w) {
   const ph = isPhrase(w);
-  return `<span class="kind${ph ? ' ph' : ''}">${ph ? '句表現' : '単語'}</span> ${esc(w.pos || '品詞なし')}${transBadge(w)}`;
+  return `<span class="kind${ph ? ' ph' : ''}">${ph ? KIND_NAMES.phrase : KIND_NAMES.word}</span> ${esc(w.pos || '品詞なし')}${transBadge(w)}`;
 }
 
 /**

@@ -2,8 +2,9 @@
 
 import { esc, actionOf } from '../dom.js';
 import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
-import { keyOf, isPhrase } from '../../core/word.js';
+import { keyOf, isPhrase, KIND_NAMES } from '../../core/word.js';
 import { editWord, deleteWord, toggleStar } from '../../core/book.js';
+import { filterWords } from '../../core/search.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 
@@ -32,8 +33,8 @@ export function render(ctx) {
     bind(ctx);
     return;
   }
-  h += `<div class="toolrow"><input type="search" id="q" aria-label="絞り込み" placeholder="見出し語・意味で絞り込む" value="${esc(query)}">
-    <span class="meta">単語 ${book.words.length - nPhrase} ／ 句表現 ${nPhrase}(計 ${book.words.length})</span></div>`;
+  h += `<div class="toolrow"><input type="search" id="q" aria-label="絞り込み" placeholder="見出し語・意味・品詞で絞り込む" value="${esc(query)}">
+    <span class="meta">${KIND_NAMES.word} ${book.words.length - nPhrase} ／ ${KIND_NAMES.phrase} ${nPhrase}(計 ${book.words.length})</span></div>`;
   h += `<div id="words">${wordsHtml(book)}</div>`;
   ctx.root.innerHTML = h;
   bind(ctx);
@@ -45,8 +46,7 @@ export function render(ctx) {
  * @returns {string}
  */
 function wordsHtml(book) {
-  const q = query.trim().toLowerCase();
-  const shown = book.words.filter((w) => !q || w.en.toLowerCase().includes(q) || (w.ja ?? '').includes(query.trim()));
+  const shown = filterWords(book.words, query);
   const star = new Set(book.starred);
   let h = '<ul class="words">';
   for (const w of shown) {
