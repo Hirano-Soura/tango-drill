@@ -16,10 +16,7 @@ let query = '';
 export function render(ctx) {
   const { book } = ctx;
   if (editing !== null && !book.words.some((w) => keyOf(w) === editing)) editing = null;
-  const q = query.trim().toLowerCase();
-  const shown = book.words.filter((w) => !q || w.en.toLowerCase().includes(q) || (w.ja ?? '').includes(query.trim()));
   const nPhrase = book.words.filter(isPhrase).length;
-  const star = new Set(book.starred);
 
   let h = '';
   if (editing !== null) {
@@ -37,7 +34,21 @@ export function render(ctx) {
   }
   h += `<div class="toolrow"><input type="search" id="q" aria-label="絞り込み" placeholder="見出し語・意味で絞り込む" value="${esc(query)}">
     <span class="meta">単語 ${book.words.length - nPhrase} ／ 句表現 ${nPhrase}(計 ${book.words.length})</span></div>`;
-  h += '<ul class="words">';
+  h += `<div id="words">${wordsHtml(book)}</div>`;
+  ctx.root.innerHTML = h;
+  bind(ctx);
+}
+
+/**
+ * 絞り込んだ語の一覧。絞り込み欄の入力ではここだけを描き直す(欄を作り直すと日本語入力の変換が切れる)。
+ * @param {import('../../core/book.js').Book} book
+ * @returns {string}
+ */
+function wordsHtml(book) {
+  const q = query.trim().toLowerCase();
+  const shown = book.words.filter((w) => !q || w.en.toLowerCase().includes(q) || (w.ja ?? '').includes(query.trim()));
+  const star = new Set(book.starred);
+  let h = '<ul class="words">';
   for (const w of shown) {
     const k = keyOf(w);
     const sub = [w.exJa, w.note].filter(Boolean).map(esc).join(' ／ ');
@@ -55,22 +66,22 @@ export function render(ctx) {
   }
   h += '</ul>';
   if (!shown.length) h += '<p class="empty">絞り込みに当たる語がありません。</p>';
-  ctx.root.innerHTML = h;
-  bind(ctx);
+  return h;
 }
 
 /** @param {Ctx} ctx */
 function bind(ctx) {
   const search = /** @type {HTMLInputElement | null} */ (ctx.root.querySelector('#q'));
-  if (search) {
-    search.oninput = () => {
+  const list = /** @type {HTMLElement | null} */ (ctx.root.querySelector('#words'));
+  if (search && list) {
+    const apply = () => {
       query = search.value;
-      const pos = search.selectionStart;
-      ctx.rerender();
-      const again = /** @type {HTMLInputElement | null} */ (ctx.root.querySelector('#q'));
-      again?.focus();
-      if (again && pos !== null) again.setSelectionRange(pos, pos);
+      list.innerHTML = wordsHtml(ctx.book);
     };
+    // 変換中(未確定)の文字では絞り込まず、確定したときに絞り込む。確定後の input と compositionend の
+    // どちらが後に来るかはブラウザで違うので、両方で拾う
+    search.oninput = (e) => { if (!(/** @type {InputEvent} */ (e).isComposing)) apply(); };
+    search.addEventListener('compositionend', apply);
   }
   const form = /** @type {HTMLFormElement | null} */ (ctx.root.querySelector('#edit-form'));
   if (form && editing !== null) {
