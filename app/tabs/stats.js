@@ -3,6 +3,7 @@
 import { esc, actionOf, download } from '../dom.js';
 import { allStats, sortStats, statsCsv, firstDates } from '../../core/review.js';
 import { sessionsOf } from '../../core/book.js';
+import { transBadge, jaHtml } from '../wordForm.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/review.js').StatSort} StatSort */
@@ -47,7 +48,7 @@ export function render(ctx) {
     for (const s of rows) {
       const hist = s.pairs.slice(-10).map((p) => `<i class="${p.ok ? 'o' : 'x'}${p.self === false ? ' u' : ''}">${p.ok ? '○' : '×'}</i>`).join('');
       h += `<tr data-key="${esc(s.key)}"><td><span class="en">${s.starred ? '<span class="star on">★</span>' : ''}${esc(s.w.en)}</span>
-        <div class="meta">${esc(s.w.pos ?? '')} ${esc(s.w.ja ?? '')}${s.often ? ' ・ <span class="ng">よく間違える</span>' : ''}</div></td>
+        <div class="meta">${esc(s.w.pos ?? '')}${transBadge(s.w)} ${jaHtml(s.w.ja)}${s.often ? ' ・ <span class="ng">よく間違える</span>' : ''}</div></td>
         <td>${s.n}</td><td>${pct(s.acc)}</td><td${s.mis ? ' class="mb"' : ''}>${s.mis}${s.said ? ` / ${s.said}` : ''}</td>
         <td class="hist">${hist}</td></tr>`;
     }

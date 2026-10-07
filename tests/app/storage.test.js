@@ -171,7 +171,7 @@ test('設定: 何も保存していなければ既定値。保存した値を開
   const factory = new IDBFactory();
   const s = await open(factory);
   assert.deepEqual(await s.loadSettings(), DEFAULT_SETTINGS);
-  const mine = { useBuiltin: false, speechAuto: true, speechVoice: 'voice-a', speechRate: 0.7 };
+  const mine = { useBuiltin: false, speechAuto: true, speechVoice: 'voice-a', speechRate: 0.7, noticesSeen: ['2026-10-07-trans'] };
   await s.saveSettings(mine);
   await s.save(sample());
   await s.restore(other());
@@ -199,6 +199,20 @@ test('設定: 読み上げの項目を足す前の設定(useBuiltin だけ)は�
   const t = await open(factory);
   assert.deepEqual(await t.loadSettings(), { ...DEFAULT_SETTINGS, useBuiltin: false });
   assert.equal((await t.loadSettings()).speechAuto, false);
+  t.close();
+});
+
+test('設定: 読んだお知らせ(noticesSeen)は文字列の配列だけを読む。配列でなければ既定の空、文字列でない要素は落とす', async () => {
+  const factory = new IDBFactory();
+  const s = await open(factory);
+  s.close();
+  await rawPut(factory, 'settings', { noticesSeen: 'a' });
+  let t = await open(factory);
+  assert.deepEqual((await t.loadSettings()).noticesSeen, []);
+  t.close();
+  await rawPut(factory, 'settings', { noticesSeen: ['a', 1, null, 'b'] });
+  t = await open(factory);
+  assert.deepEqual((await t.loadSettings()).noticesSeen, ['a', 'b']);
   t.close();
 });
 

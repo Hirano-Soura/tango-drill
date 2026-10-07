@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { keyOf, normPos, posParts, jaSenses, sensesOverlap, isPhrase } from '../../core/word.js';
+import { keyOf, normPos, posParts, jaSenses, sensesOverlap, isPhrase, isVerb, needsTrans, TRANS_VALUES, TRANS_LABEL } from '../../core/word.js';
 
 test('isPhrase: kind が phrase か、品詞に「句」を含む語', () => {
   assert.equal(isPhrase({ kind: 'phrase' }), true);
@@ -29,6 +29,23 @@ test('posParts: 区切り記号で分解する', () => {
   assert.deepEqual(posParts({ pos: '形・副' }), ['形', '副']);
   assert.deepEqual(posParts({ pos: '', kind: 'phrase' }), ['句']);
   assert.deepEqual(posParts({}), ['']);
+});
+
+test('isVerb / needsTrans: 品詞を分けた中に「動」がある語だけが自他を持つ(動詞句は含めない)', () => {
+  assert.equal(isVerb({ pos: '動' }), true);
+  assert.equal(isVerb({ pos: '名/動' }), true);
+  assert.equal(isVerb({ pos: '動詞句' }), false);
+  assert.equal(isVerb({ pos: '名' }), false);
+  assert.equal(isVerb({}), false);
+  assert.equal(needsTrans({ pos: '動' }), true);
+  assert.equal(needsTrans({ pos: '動', trans: 'vt' }), false);
+  assert.equal(needsTrans({ pos: '名' }), false);
+  assert.equal(needsTrans({ pos: '動詞句' }), false);
+});
+
+test('自他の値ごとに、短い印と説明がある(旧版と同じ 他 / 自 / 他自)', () => {
+  assert.deepEqual(TRANS_VALUES.map((t) => TRANS_LABEL[t].mark), ['他', '自', '他自']);
+  for (const t of TRANS_VALUES) assert.ok(TRANS_LABEL[t].title, t);
 });
 
 test('jaSenses: 括弧・プレースホルダ・助詞を落とす', () => {

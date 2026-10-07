@@ -126,7 +126,7 @@ test('スマホ幅でも、どのタブも横にはみ出さない', async ({ pa
   await page.getByLabel('例文', { exact: true }).fill('Averyveryverylongwordwithoutanyspacesthatcouldoverflowthelayoutonphones.');
   await page.getByRole('button', { name: '追加する' }).click();
   const fits = (/** @type {string} */ where) => fitsOn(page, where);
-  for (const name of ['学習', '単語帳', '追加', '記録', '設定', 'Q&A']) {
+  for (const name of ['学習', '単語帳', '追加', '記録', '設定', 'Q&A', '通知']) {
     await tab(page, name).click();
     await fits(`${name} タブ`);
   }

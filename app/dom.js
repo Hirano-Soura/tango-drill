@@ -4,7 +4,7 @@
 /** @typedef {import('./storage.js').Settings} Settings */
 
 /**
- * @typedef {'study' | 'list' | 'add' | 'stats' | 'settings' | 'qa'} TabId
+ * @typedef {'study' | 'list' | 'add' | 'stats' | 'settings' | 'qa' | 'notice'} TabId
  */
 
 /**
@@ -100,6 +100,14 @@ const closedFolds = new Set();
  */
 export function foldOpen(id) {
   return `<details class="panel fold" id="${id}"${closedFolds.has(id) ? '' : ' open'}>`;
+}
+
+/**
+ * 開閉できる欄を、次に描くときに開いた状態にする(別のタブからその欄へ案内するとき)。
+ * @param {string} id
+ */
+export function unfold(id) {
+  closedFolds.delete(id);
 }
 
 /**

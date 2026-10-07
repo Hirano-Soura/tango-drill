@@ -3,7 +3,7 @@
 // 確認表の規則は Docs/20_ImportFormat.md §4、画面の規則は Docs/23_Screens.md §3。
 
 import { esc, actionOf, splitTags, foldOpen, bindFolds } from '../dom.js';
-import { wordFields, readWordFields, posLine } from '../wordForm.js';
+import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
 import { addOneWord, importIntoBook } from '../../core/book.js';
 import { parseImport, SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 import { planImport, confirmPlan } from '../../core/importPlan.js';
@@ -57,11 +57,12 @@ export function render(ctx) {
       </form>
       <p class="msg${isError ? ' err' : ''}" role="status" id="add-msg">${esc(message)}</p>
     </details>
-    ${aiHtml()}
+    ${aiHtml(ctx.book)}
     ${foldOpen('import-panel')}
       <summary><h2>まとめて取り込む</h2></summary>
       <p class="hint">AI の返答や表計算からのコピーを貼り付けるか、ファイルを選びます。
-        1 行 1 語で「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」の順。確認表で中身を確かめてから単語帳に入れます。</p>
+        1 行 1 語で「見出し語 | 品詞 | 意味 | 例文 | 例文の和訳 | 補足」の順。動詞の自他は品詞に「動(他)」「動(自)」「動(自他)」と添えます。
+        確認表で中身を確かめてから単語帳に入れます。</p>
       <div class="wordform">
         <div class="f"><label for="imp-text">貼り付ける内容</label><textarea id="imp-text" rows="6" spellcheck="false" placeholder="${esc(SIMPLE_EXAMPLE)}">${esc(pasted)}</textarea></div>
         <div class="f"><label for="imp-file">ファイルから読む</label><input type="file" id="imp-file" accept=".txt,.json,.tsv,.md,text/plain,application/json"></div>
@@ -235,7 +236,7 @@ function rowHtml(row) {
   body += w ? `<span class="en" lang="en">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span>` : `<span class="meta">${row.ref} 行目</span>`;
   body += '</div>';
   if (w) {
-    if (w.ja) body += `<div class="ja">${esc(w.ja)}</div>`;
+    if (w.ja) body += `<div class="ja">${jaHtml(w.ja)}</div>`;
     if (w.ex) body += `<div class="ex" lang="en">${esc(w.ex)}</div>`;
     const sub = [w.exJa, w.note, ...(w.tags ?? []).map((t) => '#' + t)].filter(Boolean).map(esc).join(' ／ ');
     if (sub) body += `<div class="ex">${sub}</div>`;

@@ -1,6 +1,8 @@
 // 取り込み形式(簡易形式・JSON)の解析と検証。ブラウザの API に触れない(INV-6)。
 // 仕様は Docs/20_ImportFormat.md。版を足す・変えるときの手順は同 §1(INV-3)。
 
+import { TRANS_VALUES } from './word.js';
+
 /** @typedef {import('./word.js').Word} Word */
 
 /**
@@ -38,8 +40,8 @@ export const BACKUP_FORMAT_PREFIX = 'tango-drill-backup/';
  * 全項目の行・途中までの行を 1 つずつ含める。どの行も語として読めることを tests/core/importFormat.test.js が確かめる。
  */
 export const SIMPLE_EXAMPLE = [
-  'allocate | 動 | 割り当てる | The manager allocated the budget. | 部長が予算を割り当てた。 | allocate A to B',
-  'reimburse | 動 | 払い戻す',
+  'allocate | 動(他) | 割り当てる | The manager allocated the budget. | 部長が予算を割り当てた。 | allocate A to B',
+  'reimburse | 動(他) | 払い戻す',
   'itinerary | 名 | 旅程',
 ].join('\n');
 
@@ -55,7 +57,8 @@ export const READABLE_FORMATS = Object.freeze([SIMPLE_FORMAT, LEGACY_FORMAT, ...
 const WORD_KEYS = ['en', 'pos', 'trans', 'ja', 'ex', 'exJa', 'note', 'kind', 'tags', 'exSrc'];
 /** 文字列で持つ項目(en を除く) */
 const TEXT_KEYS = /** @type {const} */ (['pos', 'trans', 'ja', 'ex', 'exJa', 'note', 'kind', 'exSrc']);
-const TRANS = ['vt', 'vi', 'vt/vi'];
+/** @type {readonly string[]} */
+const TRANS = TRANS_VALUES;
 const EX_SRC = ['self', 'ai', 'set'];
 
 /** かな・漢字・全角記号 */
@@ -327,19 +330,26 @@ function buildRow(fields, tags, ref, raw, warnings) {
 
   /** @type {Word} */
   const word = { en };
-  const pos = pick('pos');
-  if (pos) word.pos = normalizePos(pos);
+  // 品詞に添えた自他の印(「動(他)」「他動詞」など。簡易形式で自他を書く唯一の場所)は trans に移す
+  const marked = splitTransMark(pick('pos'));
+  if (marked.pos) word.pos = normalizePos(marked.pos);
   for (const k of /** @type {const} */ (['ja', 'ex', 'exJa', 'note'])) {
     const v = pick(k);
     if (v) word[k] = v;
   }
   const trans = pick('trans');
+  let given = '';
   if (trans) {
     const t = trans.toLowerCase().replace(/\s/g, '');
     const v = t === 'vi/vt' ? 'vt/vi' : t;
-    if (TRANS.includes(v)) word.trans = v;
+    if (TRANS.includes(v)) given = v;
     else warnings.push(`trans の値 ${trans} は使えないため無視しました(vt / vi / vt/vi)`);
   }
+  // trans の欄が品詞の印より先(欄は意図して選んだ値のため)。食い違えば知らせる
+  if (given && marked.trans && given !== marked.trans) {
+    warnings.push(`品詞に添えた自他(${marked.trans})は trans の値 ${given} と食い違うため、trans の値を使いました`);
+  }
+  if (given || marked.trans) word.trans = given || marked.trans;
   if (word.exJa && !word.ex) {
     warnings.push('例文の無い和訳(exJa)は無視しました');
     delete word.exJa;
@@ -357,6 +367,49 @@ function buildRow(fields, tags, ref, raw, warnings) {
   const cleanTags = [...new Set((tags || []).map((t) => t.trim()).filter(Boolean))];
   if (cleanTags.length) word.tags = cleanTags;
   return { ref, raw, word, warnings };
+}
+
+/** 品詞に括弧で添えた自他の印(括弧の中身から空白を除き、小文字にしたもの)→ trans */
+const TRANS_MARKS = /** @type {Record<string, string>} */ ({
+  '他': 'vt', '他動詞': 'vt', vt: 'vt', 'v.t.': 'vt',
+  '自': 'vi', '自動詞': 'vi', vi: 'vi', 'v.i.': 'vi',
+  '自他': 'vt/vi', '他自': 'vt/vi', '他/自': 'vt/vi', '自/他': 'vt/vi', '他・自': 'vt/vi', '自・他': 'vt/vi',
+  'vt/vi': 'vt/vi', 'vi/vt': 'vt/vi',
+});
+/** 品詞として単独で書いた自他(区切りの間の 1 つ)→ trans。これらは品詞「動」に置き換える */
+const TRANS_TOKENS = /** @type {Record<string, string>} */ ({
+  '他動詞': 'vt', vt: 'vt', 'v.t.': 'vt',
+  '自動詞': 'vi', vi: 'vi', 'v.i.': 'vi',
+});
+
+/**
+ * 品詞の欄から自他の印を取り出す。「動(他)」「名/動(自他)」の括弧と、単独の「他動詞」「vt」を読む。
+ * 取り出したあとの品詞に「動」が無ければ(「名(他)」など)、自他の印とはみなさずにそのまま返す。
+ * 括弧の中身が自他の印でないもの(「名(可算)」など)は残す。
+ * @param {string} pos 前後の空白を落とした品詞(空でもよい)
+ * @returns {{ pos: string, trans?: string }}
+ */
+export function splitTransMark(pos) {
+  if (!pos) return { pos };
+  /** @type {Set<string>} */
+  const found = new Set();
+  let rest = pos.replace(/[（(]([^）)]*)[）)]/g, (m, /** @type {string} */ inner) => {
+    const t = TRANS_MARKS[inner.replace(/\s/g, '').toLowerCase()];
+    if (!t) return m;
+    found.add(t);
+    return '';
+  });
+  rest = rest.replace(/[^\/・,、]+/g, (tok) => {
+    const t = TRANS_TOKENS[tok.trim().toLowerCase()];
+    if (!t) return tok;
+    found.add(t);
+    return '動';
+  });
+  // 「他動詞/自動詞」は「動」が 2 つ並ぶので 1 つにする
+  rest = rest.replace(/動(?:\s*[\/・,、]\s*動)+/g, '動').trim();
+  if (!found.size || !rest.includes('動')) return { pos };
+  const trans = found.has('vt/vi') || (found.has('vt') && found.has('vi')) ? 'vt/vi' : [...found][0];
+  return { pos: rest, trans };
 }
 
 /**

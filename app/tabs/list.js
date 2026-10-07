@@ -1,7 +1,7 @@
 // 単語帳タブ: 一覧・絞り込み・印・編集・削除。削除と編集は直後に「元に戻す」で取り消せる。
 
 import { esc, actionOf } from '../dom.js';
-import { wordFields, readWordFields, posLine } from '../wordForm.js';
+import { wordFields, readWordFields, posLine, jaHtml } from '../wordForm.js';
 import { keyOf, isPhrase } from '../../core/word.js';
 import { editWord, deleteWord, toggleStar } from '../../core/book.js';
 
@@ -46,7 +46,7 @@ export function render(ctx) {
       <button class="star${star.has(k) ? ' on' : ''}" data-action="star" aria-pressed="${star.has(k)}" aria-label="印">★</button>
       <div class="body">
         <div><span class="en${isPhrase(w) ? ' ph' : ''}" lang="en">${esc(w.en)}</span> <span class="meta">${posLine(w)}</span></div>
-        <div class="ja">${esc(w.ja ?? '')}</div>
+        <div class="ja">${jaHtml(w.ja)}</div>
         ${w.ex ? `<div class="ex" lang="en">${esc(w.ex)}</div>` : ''}${sub ? `<div class="ex">${sub}</div>` : ''}
         <div class="meta">${meta}</div>
       </div>

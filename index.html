@@ -21,6 +21,8 @@
   nav{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
   nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:5px 14px;cursor:pointer;font-size:14px;font-family:inherit}
   nav button.active{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+  nav button{position:relative}
+  nav .dot{position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:var(--ng);border:2px solid var(--card)}
   main{max-width:760px;margin:0 auto;padding:16px 16px 96px}
   h2{font-size:16px;margin:0 0 10px}
   button{font-family:inherit;font-size:14px;color:var(--ink)}
@@ -85,7 +87,13 @@
   .warn{color:var(--warnfg)}
   .kind{display:inline-block;font-size:11px;border-radius:10px;padding:0 7px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
   .kind.ph{background:var(--phbg);border-color:var(--phbd);color:var(--phfg)}
-  .tr{display:inline-block;font-size:10.5px;border-radius:8px;padding:0 6px;border:1px solid var(--line);color:var(--sub)}
+  .tr{display:inline-block;font-size:10.5px;border-radius:8px;padding:0 6px;border:1px solid var(--line);color:var(--sub);cursor:help}
+  .tr.vt{background:var(--yesbg);border-color:var(--yesbd);color:var(--yesfg)}
+  .tr.vi{background:var(--nobg);border-color:var(--nobd);color:var(--nofg)}
+  .tr.both{background:var(--phbg);border-color:var(--phbd);color:var(--phfg)}
+  .jl{display:inline-block;font-size:10.5px;font-weight:400;border-radius:6px;padding:0 5px;margin-right:3px;border:1px solid var(--line);color:var(--sub);vertical-align:1.5px}
+  .notice p{margin:0 0 8px;font-size:14px;overflow-wrap:anywhere}
+  .notice h2{overflow-wrap:anywhere}
   .q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:10px 0}
   .q .stem{font-size:26px;font-weight:700;margin-bottom:4px;overflow-wrap:anywhere}
   .q .stem.ph{font-size:21px}

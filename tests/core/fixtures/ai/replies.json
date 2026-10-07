@@ -28,5 +28,16 @@
     "promptVersion": "v1",
     "examples": true,
     "words": ["allocate", "itinerary", "reimburse", "tentative", "comply with", "on behalf of", "in advance", "secure", "estimate", "be eligible for"]
+  },
+  {
+    "file": "claude_v2_session.txt",
+    "provider": "Claude",
+    "model": "開発中のセッションのモデル",
+    "via": "Claude Code のクラウドのセッションが依頼文 v2 に答えたもの。返答をそのまま保存(コードブロックの囲みを含む)",
+    "standIn": "開発中のセッションで採った返答(学生と同じアプリではない)。依頼文 v2 の自他の書き方を読めるかの確認用",
+    "date": "2026-10-07",
+    "promptVersion": "v2",
+    "examples": true,
+    "words": ["allocate", "itinerary", "reimburse", "tentative", "comply with", "on behalf of", "in advance", "secure", "estimate", "be eligible for"]
   }
 ]

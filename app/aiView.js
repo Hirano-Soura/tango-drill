@@ -2,15 +2,38 @@
 // AI へは何も送らない(INV-1)。利用者が AI に貼り、返ってきた答えを「まとめて取り込む」に貼る(確認表を経る。INV-2)。
 
 import { esc, actionOf, foldOpen, bindFolds } from './dom.js';
-import { aiPrompt, requestWords } from '../core/aiPrompt.js';
+import { aiPrompt, requestWords, transPrompt } from '../core/aiPrompt.js';
+import { needsTrans } from '../core/word.js';
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
+/** @typedef {import('../core/book.js').Book} Book */
 
-/** 入力と作った依頼文(タブを移っても残す) */
-const state = { words: '', examples: true, prompt: '', message: '' };
+/**
+ * 入力と作った依頼文(タブを移っても残す)。kind は見せている依頼文の種類
+ * (words: 語の一覧から単語カードを作る / trans: 単語帳の自他の無い動詞に自他を補う)。
+ */
+const state = { words: '', examples: true, prompt: '', kind: /** @type {'words' | 'trans'} */ ('words'), message: '' };
 
-/** @returns {string} */
-export function aiHtml() {
+/**
+ * 単語帳の自他の無い動詞に自他を補う依頼文を作る(既存の語への遡及。Docs/20_ImportFormat.md §6)。
+ * 通知タブからも呼ぶ。返答は「まとめて取り込む」に貼り、確認表で自他の空欄だけを埋める(INV-2)。
+ * @param {Book} book
+ */
+export function prepareTrans(book) {
+  const verbs = book.words.filter(needsTrans);
+  state.prompt = transPrompt(verbs);
+  state.kind = 'trans';
+  state.message = verbs.length
+    ? `自他の無い動詞 ${verbs.length} 語の依頼文を作りました。AI の答えは下の「まとめて取り込む」に貼ってください(自他だけを書き足します)`
+    : '自他の無い動詞はありません';
+}
+
+/**
+ * @param {Book} book
+ * @returns {string}
+ */
+export function aiHtml(book) {
+  const nTrans = book.words.filter(needsTrans).length;
   return `${foldOpen('ai-panel')}
     <summary><h2>AI に頼む</h2></summary>
     <p class="hint">覚えたい語を 1 行に 1 つ書いて依頼文を作り、ChatGPT・Claude・Gemini などに貼ってください。
@@ -20,7 +43,10 @@ export function aiHtml() {
         <textarea id="ai-words" rows="4" spellcheck="false" lang="en">${esc(state.words)}</textarea></div>
       <div class="check"><input type="checkbox" id="ai-ex"${state.examples ? ' checked' : ''}><label for="ai-ex">例文と和訳も作ってもらう</label></div>
       <div class="rowbtns"><button type="button" class="primary" data-action="ai-make">依頼文を作る</button></div>
-      ${state.prompt ? `<div class="f"><label for="ai-prompt">AI への依頼文</label>
+      ${nTrans ? `<p class="hint" id="ai-trans-note">単語帳に、自他(他動詞・自動詞)の無い動詞が ${nTrans} 語あります。自他だけを AI に尋ねる依頼文も作れます。
+        答えを「まとめて取り込む」に貼ると、確認表で自他の空欄だけを埋めます(意味や例文は変わりません)。</p>
+        <div class="rowbtns"><button type="button" data-action="ai-trans">自他を補う依頼文を作る</button></div>` : ''}
+      ${state.prompt ? `<div class="f"><label for="ai-prompt">${state.kind === 'trans' ? 'AI への依頼文(自他を補う)' : 'AI への依頼文'}</label>
         <textarea id="ai-prompt" rows="8" readonly>${esc(state.prompt)}</textarea></div>
         <div class="rowbtns"><button type="button" data-action="ai-copy">依頼文をコピー</button></div>` : ''}
     </div>
@@ -44,16 +70,21 @@ export function bindAi(ctx) {
  */
 export async function handleAiClick(ctx, e) {
   const act = actionOf(e)?.dataset.action;
-  if (act === 'ai-make') {
-    const { words, ignored } = requestWords(state.words);
-    state.prompt = aiPrompt(words, { examples: state.examples });
-    state.message = words.length
-      ? `${words.length} 語の依頼文を作りました` + (ignored.length ? `(英語でない行を除きました: ${ignored.join('、')})` : '')
-      : '頼む語を 1 行に 1 つ書いてください';
+  if (act === 'ai-make' || act === 'ai-trans') {
+    if (act === 'ai-trans') {
+      prepareTrans(ctx.book);
+    } else {
+      const { words, ignored } = requestWords(state.words);
+      state.prompt = aiPrompt(words, { examples: state.examples });
+      state.kind = 'words';
+      state.message = words.length
+        ? `${words.length} 語の依頼文を作りました` + (ignored.length ? `(英語でない行を除きました: ${ignored.join('、')})` : '')
+        : '頼む語を 1 行に 1 つ書いてください';
+    }
     // この欄だけを描き直す(タブ全体を描き直すと、1 語の追加欄に入力中の値が消える)
     const panel = ctx.root.querySelector('#ai-panel');
     if (panel) {
-      panel.outerHTML = aiHtml();
+      panel.outerHTML = aiHtml(ctx.book);
       bindFolds(ctx.root);
       bindAi(ctx);
     } else {

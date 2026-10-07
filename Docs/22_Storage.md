@@ -109,7 +109,7 @@ flowchart LR
 | オブジェクトストア | `kv`(キーは外から与える) |
 | キー `book` | 今の単語帳。**バックアップと同じ形**(`toBackup`) |
 | キー `undo` | 復元の直前の単語帳(同じ形)。直前に何も保存されていなければ `null` |
-| キー `settings` | 端末ごとの設定(`loadSettings` / `saveSettings`)。バックアップには入れない。無い項目・型の違う項目は既定値(`DEFAULT_SETTINGS`)で補う |
+| キー `settings` | 端末ごとの設定(`loadSettings` / `saveSettings`)。バックアップには入れない。無い項目・型の違う項目は既定値(`DEFAULT_SETTINGS`)で補う。配列の項目(読んだお知らせの id `noticesSeen`。[25_Notices.md](25_Notices.md) §2)は、配列でなければ既定値にし、文字列でない要素を落とす |
 
 - **保存はブラウザとオリジン(スキーム + ホスト + ポート)ごとに分かれ、URL のパスでは分かれない。**
   `http://127.0.0.1:8765` と `https://hirano-soura.github.io` は別の単語帳になるが、

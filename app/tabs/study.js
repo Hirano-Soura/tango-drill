@@ -3,7 +3,7 @@
 // 「思い浮かべた訳が選択肢に無い」から選ぶ。判定と記録は core の stage1Record / stage2Judge(Docs/21_Quiz.md §6)。
 
 import { esc, actionOf } from '../dom.js';
-import { posLine } from '../wordForm.js';
+import { posLine, jaHtml } from '../wordForm.js';
 import { keyOf, isPhrase } from '../../core/word.js';
 import { sessionsOf } from '../../core/book.js';
 import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record, stage2Judge, statOf } from '../../core/review.js';
@@ -180,7 +180,7 @@ function renderQuiz(ctx) {
     // 前へ戻れるのはカード形式だけ(2 段階クイズで戻ると、答えた問題を解き直して記録が二重になる)
     const prev = st.format === 'card' ? '<button data-action="prev">← 前へ</button>' : '';
     return head + `<div class="q card" data-action="flip">${why}${stem}<div class="pos">${posLine(cur)}</div>
-      ${qz.reveal ? `<div class="back">${esc(cur.ja ?? '(意味なし)')}</div><div class="ex">${back}</div>` : '<p class="meta">タップで意味を表示</p>'}
+      ${qz.reveal ? `<div class="back">${cur.ja ? jaHtml(cur.ja) : '(意味なし)'}</div><div class="ex">${back}</div>` : '<p class="meta">タップで意味を表示</p>'}
       ${qz.reveal && cur.ex ? `<div class="rowbtns">${sayButton(ctx, 'ex', '例文を聞く')}</div>` : ''}</div><div class="rowbtns">${prev}<button class="primary" data-action="next">次へ →</button>${pause}</div>`;
   }
   const choice = /** @type {import('../../core/distractors.js').ChoiceOk} */ (qz.choice);
@@ -197,7 +197,7 @@ function renderQuiz(ctx) {
   h += '<div class="choices">';
   choice.options.forEach((o, i) => {
     const cls = answered ? (o.correct ? ' correct' : qz.picked === i ? ' wrong' : '') : '';
-    h += `<button class="choice${cls}" data-action="pick" data-i="${i}"${answered ? ' disabled' : ''}>${esc(o.word.ja)}</button>`;
+    h += `<button class="choice${cls}" data-action="pick" data-i="${i}"${answered ? ' disabled' : ''}>${jaHtml(o.word.ja)}</button>`;
   });
   h += `<button class="choice none${answered && qz.picked === -1 ? ' wrong' : ''}" data-action="pick" data-i="-1"${answered ? ' disabled' : ''}>思い浮かべた訳が選択肢に無い</button></div>`;
   if (answered) {

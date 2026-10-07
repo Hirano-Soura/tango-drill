@@ -17,6 +17,19 @@
  * @property {'self' | 'ai' | 'set'} [exSrc] 例文の出どころ(自作 / AI 生成 / 教材セット)
  */
 
+/** 動詞の自他の値(Docs/20_ImportFormat.md §2) */
+export const TRANS_VALUES = /** @type {const} */ (['vt', 'vi', 'vt/vi']);
+
+/**
+ * 自他の短い印と説明。印は既存アプリ(toeic-drill)の品詞欄のバッジと同じ。
+ * @type {Readonly<Record<string, { mark: string, title: string }>>}
+ */
+export const TRANS_LABEL = Object.freeze({
+  vt: { mark: '他', title: '他動詞(目的語を直接とる)' },
+  vi: { mark: '自', title: '自動詞(目的語を直接とらない。前置詞が要る)' },
+  'vt/vi': { mark: '他自', title: '他動詞・自動詞の両用' },
+});
+
 /** 括弧書きの補足(全角・半角)を落とす */
 const PAREN = /[（(][^）)]*[）)]/g;
 
@@ -61,6 +74,25 @@ export function posParts(w) {
   const raw = String(w.pos || '').replace(PAREN, '');
   const parts = raw.split(/[\/・,、|]/).map((x) => x.trim()).filter(Boolean);
   return parts.length ? parts : [w.kind === 'phrase' ? '句' : ''];
+}
+
+/**
+ * 自他を持つ語か。品詞を分けた中に「動」があるもの(名/動 を含む)。
+ * 「動詞句」などの句は含めない(既存アプリの単語データも句には自他を付けていない)。
+ * @param {Pick<Word, 'pos' | 'kind'>} w
+ * @returns {boolean}
+ */
+export function isVerb(w) {
+  return posParts(w).includes('動');
+}
+
+/**
+ * 自他がまだ無い動詞か(既存の語に自他を補う対象。Docs/20_ImportFormat.md §6)。
+ * @param {Pick<Word, 'pos' | 'kind' | 'trans'>} w
+ * @returns {boolean}
+ */
+export function needsTrans(w) {
+  return isVerb(w) && !w.trans;
 }
 
 /**

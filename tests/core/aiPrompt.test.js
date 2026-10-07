@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { aiPrompt, requestWords, AI_PROMPT_VERSION } from '../../core/aiPrompt.js';
+import { aiPrompt, requestWords, transPrompt, AI_PROMPT_VERSION } from '../../core/aiPrompt.js';
 import { parseImport } from '../../core/importFormat.js';
+import { planImport, confirmPlan, applyImport } from '../../core/importPlan.js';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'ai');
 
@@ -52,4 +53,34 @@ test('依頼文の列の並びは簡易形式と同じで、AI が列名の行�
       ? { en: 'allocate', pos: '動', ja: '割り当てる', ex: 'We allocate funds.', exJa: '資金を割り当てる。', note: 'allocate A to B' }
       : { en: 'allocate', pos: '動', ja: '割り当てる', note: 'allocate A to B' });
   }
+});
+
+test('依頼文 v2 どおりの 1 行は、品詞に添えた自他を trans として読む', () => {
+  const w = parseImport('estimate | 名/動(他) | (名)見積もり ／ (動)見積もる | Send us an estimate. | 見積もりを送ってください。 | a rough estimate').rows[0].word;
+  assert.deepEqual(w, { en: 'estimate', pos: '名/動', trans: 'vt', ja: '(名)見積もり ／ (動)見積もる', ex: 'Send us an estimate.', exJa: '見積もりを送ってください。', note: 'a rough estimate' });
+});
+
+test('自他を補う依頼文: 版ごとに固定し、見出し語と品詞をそのまま並べる。語が無ければ空', () => {
+  const words = [{ en: 'allocate', pos: '動' }, { en: 'estimate', pos: '名/動' }, { en: 'secure', pos: '動/形' }, { en: 'expire', pos: '動' }];
+  const pinned = readFileSync(join(dir, `trans_${AI_PROMPT_VERSION}.txt`), 'utf8').replace(/\r\n/g, '\n').replace(/\n$/, '');
+  assert.equal(transPrompt(words), pinned);
+  assert.ok(transPrompt(words).endsWith('【語の一覧】\nallocate | 動\nestimate | 名/動\nsecure | 動/形\nexpire | 動'));
+  assert.equal(transPrompt([]), '');
+});
+
+test('自他を補う依頼文への返答は、確認表で既存の語の自他の空欄だけを埋める(意味・例文は変えない)', () => {
+  const book = [
+    { en: 'allocate', pos: '動', ja: '割り当てる', ex: 'We allocate funds.', exJa: '資金を割り当てる。', exSrc: /** @type {const} */ ('self') },
+    { en: 'estimate', pos: '名/動', ja: '見積もり' },
+    { en: 'secure', pos: '動/形', ja: '確保する' },
+    { en: 'expire', pos: '動', ja: '期限が切れる' },
+  ];
+  // AI が見出し語の一覧を書き写し、自他を添えて返した形(コードブロックつき)
+  const reply = '```\nallocate | 動(他)\nestimate | 名/動(他)\nsecure | 動/形(他)\nexpire | 動(自)\n```';
+  const plan = planImport(book, parseImport(reply));
+  assert.deepEqual(plan.rows.map((r) => [r.action, r.fills]), [['merge', ['trans']], ['merge', ['trans']], ['merge', ['trans']], ['merge', ['trans']]]);
+  const r = applyImport(book, confirmPlan(plan));
+  assert.deepEqual(r.words.map((w) => w.trans), ['vt', 'vt', 'vt', 'vi']);
+  assert.deepEqual(r.words.map(({ trans, ...rest }) => rest), book, '自他のほかは変えない');
+  assert.equal(r.added, 0);
 });

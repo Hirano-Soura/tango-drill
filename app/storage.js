@@ -25,10 +25,14 @@ const SETTINGS = 'settings';
  * @property {boolean} speechAuto 問題を出したときに見出し語を自動で読み上げる(Docs/24_Speech.md)
  * @property {string} speechVoice 読み上げに使う音声の voiceURI。空なら自動で選ぶ(Docs/24_Speech.md)
  * @property {number} speechRate 読み上げの速さ(core/speech.js の RATES)
+ * @property {string[]} noticesSeen 読んだお知らせの id(core/notices.js。Docs/25_Notices.md)
  */
 
 /** @type {Readonly<Settings>} */
-export const DEFAULT_SETTINGS = Object.freeze({ useBuiltin: true, speechAuto: false, speechVoice: '', speechRate: 0.9 });
+export const DEFAULT_SETTINGS = Object.freeze({
+  useBuiltin: true, speechAuto: false, speechVoice: '', speechRate: 0.9,
+  noticesSeen: /** @type {string[]} */ (/** @type {unknown} */ (Object.freeze([]))),
+});
 
 /**
  * @typedef {object} StorageOptions
@@ -123,7 +127,10 @@ export async function openStorage(factory, opts = {}) {
       if (typeof raw === 'object' && raw !== null) {
         for (const k of /** @type {(keyof Settings)[]} */ (Object.keys(DEFAULT_SETTINGS))) {
           const v = /** @type {Record<string, unknown>} */ (raw)[k];
-          if (typeof v === typeof DEFAULT_SETTINGS[k]) /** @type {Record<string, unknown>} */ (out)[k] = v;
+          // 配列の項目(noticesSeen)は配列であることと、中身が文字列であることを見る
+          if (Array.isArray(DEFAULT_SETTINGS[k])) {
+            if (Array.isArray(v)) /** @type {Record<string, unknown>} */ (out)[k] = v.filter((x) => typeof x === 'string');
+          } else if (typeof v === typeof DEFAULT_SETTINGS[k]) /** @type {Record<string, unknown>} */ (out)[k] = v;
         }
       }
       return out;

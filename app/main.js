@@ -1,4 +1,4 @@
-// 画面の入口: 保存層を開き、6 つのタブを切り替える。単語帳を変える操作は commit を通す
+// 画面の入口: 保存層を開き、7 つのタブを切り替える。単語帳を変える操作は commit を通す
 // (バックアップからの復元とその取り消しだけは restore / undoRestore を通す)。
 // 「元に戻す」は直前の追加・編集・削除・取り込みの確定だけを 1 段取り消す(次に単語帳を変えると消える)。
 
@@ -11,6 +11,8 @@ import * as add from './tabs/add.js';
 import * as stats from './tabs/stats.js';
 import * as settings from './tabs/settings.js';
 import * as qa from './tabs/qa.js';
+import * as notice from './tabs/notice.js';
+import { NOTICES, unreadImportant, unreadIds } from '../core/notices.js';
 
 /** @typedef {import('./dom.js').Ctx} Ctx */
 /** @typedef {import('./dom.js').TabId} TabId */
@@ -25,6 +27,7 @@ const TABS = [
   ['stats', '記録', stats],
   ['settings', '設定', settings],
   ['qa', 'Q&A', qa],
+  ['notice', '通知', notice],
 ];
 
 const content = /** @type {HTMLElement} */ (document.getElementById('content'));
@@ -95,14 +98,32 @@ async function main() {
       speech.stop();
       app.tab = tab;
       app.undo = null;
+      if (tab === 'notice') readNotices();
       render();
     },
     rerender: () => render(),
   };
 
+  /**
+   * 通知タブを開いたら、まだ読んでいないお知らせを既読にする(赤い点はすぐ消す)。
+   * 保存に失敗したら、次に開いたときにまた点が出る(読み直せば消える)。Docs/25_Notices.md
+   */
+  function readNotices() {
+    const fresh = unreadIds(NOTICES, app.settings.noticesSeen);
+    notice.setFresh(fresh);
+    if (!fresh.length) return;
+    app.settings = { ...app.settings, noticesSeen: [...app.settings.noticesSeen, ...fresh] };
+    storage.saveSettings(app.settings).catch(() => {});
+  }
+
   function render() {
-    nav.innerHTML = TABS.map(([id, label]) =>
-      `<button role="tab" data-tab="${id}" aria-selected="${app.tab === id}" class="${app.tab === id ? 'active' : ''}">${esc(label)}</button>`).join('');
+    // 読んでいない重要なお知らせがあれば、通知タブのボタンの右上に赤い点を出す(名前は変えず、説明で知らせる)
+    const unread = unreadImportant(NOTICES, app.settings.noticesSeen).length > 0;
+    nav.innerHTML = TABS.map(([id, label]) => {
+      const dot = id === 'notice' && unread;
+      return `<button role="tab" data-tab="${id}" aria-selected="${app.tab === id}" class="${app.tab === id ? 'active' : ''}"` +
+        `${dot ? ' aria-describedby="notice-unread"' : ''}>${esc(label)}${dot ? '<span class="dot" aria-hidden="true"></span>' : ''}</button>`;
+    }).join('') + (unread ? '<span id="notice-unread" hidden>読んでいない重要なお知らせがあります</span>' : '');
     const tab = TABS.find(([id]) => id === app.tab) ?? TABS[0];
     content.onclick = null;
     content.onchange = null;
