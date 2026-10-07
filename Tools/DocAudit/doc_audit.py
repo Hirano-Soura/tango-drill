@@ -52,6 +52,9 @@ SEND_API = {
     "importScripts": re.compile(r"\bimportScripts\s*\("),
     "form action": re.compile(r"<form\b[^>]*\baction\s*=", re.I),
     "external URL": re.compile(r"\b(?:https?|wss?)://", re.I),
+    # Not a send API by itself, but a network voice (Chrome "Google ...", Edge "... Online (Natural)") sends the
+    # text it reads to a server. Kept to one file that only uses voices with localService (Docs/24_Speech.md).
+    "speech synthesis": re.compile(r"\b(?:speechSynthesis|SpeechSynthesisUtterance)\b"),
 }
 # Shipped code = everything except these top-level directories (they never reach the browser).
 NOT_SHIPPED = {"tests", "Tools", "Docs", ".github", ".claude"}
@@ -64,6 +67,9 @@ INV1_ALLOW: dict[tuple[str, str], str] = {
     ("app/links.js", "external URL"):
         "the improvement survey (Google Forms) the user opens in a new tab from the Q&A tab; the app makes no request, "
         "and no word or record is put in the URL. Every external URL of the app is kept in this one file",
+    ("app/speech.js", "speech synthesis"):
+        "reads words aloud only with voices whose localService is true (core/speech.js pickVoice, tested in "
+        "tests/core/speech.test.js); with no such voice it does not speak, so no word leaves the device",
 }
 
 
@@ -290,6 +296,7 @@ def build_fixture(root: Path, broken: bool) -> None:
     if not broken:
         return
     (root / "app" / "send.js").write_text("export const s = (d) => navigator.sendBeacon('/x', d);\n", encoding="utf-8")  # INV-1
+    (root / "app" / "say.js").write_text("export const t = (s) => speechSynthesis.speak(s);\n", encoding="utf-8")  # INV-1
     (root / "index.html").write_text('<script src="https://cdn.example.com/a.js"></script>\n', encoding="utf-8")   # INV-1
     (root / "Docs" / "20_Orphan.md").write_text("orphan\n", encoding="utf-8")                  # UD-1
     (root / "Docs" / "10_A.md").write_text("[x](missing.md)\n", encoding="utf-8")               # links
@@ -323,13 +330,19 @@ def self_test() -> int:
                        "UD-4 completion reports", "UD-6 strikethrough", "UD-8 absolute paths",
                        "UD-9 competing rules", "UD-12 pseudo diagrams", "INV-6 core purity",
                        "INV-1 no send", "P-3 invisible chars"})
+    # INV-1 has several patterns under one check name: the speech one must fire on its own plant.
+    if any(c == "INV-1 no send" and "uses speech synthesis" in d for _, c, d in broken.findings):
+        lines.append("[PASS] detects INV-1 speech synthesis outside app/speech.js")
+    else:
+        bad += 1
+        lines.append("[FAIL] did NOT detect planted INV-1 speech synthesis")
     for c in expected:
         if c in fired:
             lines.append(f"[PASS] detects {c}")
         else:
             bad += 1
             lines.append(f"[FAIL] did NOT detect planted {c}")
-    lines.insert(2, f"result: {'FAIL' if bad else 'PASS'} (fail={bad}, checks={len(expected)})")
+    lines.insert(2, f"result: {'FAIL' if bad else 'PASS'} (fail={bad}, checks={len(expected) + 1})")
     write(SELFTEST_REPORT, lines)
     return 1 if bad else 0
 

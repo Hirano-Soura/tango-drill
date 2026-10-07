@@ -22,10 +22,13 @@ const SETTINGS = 'settings';
  * 設定。項目を足すときは DEFAULT_SETTINGS にも足す(保存してある古い設定に無い項目は既定値で補う)。
  * @typedef {object} Settings
  * @property {boolean} useBuiltin 4 択の誤答に内蔵語彙を使う(Docs/21_Quiz.md §1)
+ * @property {boolean} speechAuto 問題を出したときに見出し語を自動で読み上げる(Docs/24_Speech.md)
+ * @property {string} speechVoice 読み上げに使う音声の voiceURI。空なら自動で選ぶ(Docs/24_Speech.md)
+ * @property {number} speechRate 読み上げの速さ(core/speech.js の RATES)
  */
 
 /** @type {Readonly<Settings>} */
-export const DEFAULT_SETTINGS = Object.freeze({ useBuiltin: true });
+export const DEFAULT_SETTINGS = Object.freeze({ useBuiltin: true, speechAuto: false, speechVoice: '', speechRate: 0.9 });
 
 /**
  * @typedef {object} StorageOptions
@@ -120,7 +123,7 @@ export async function openStorage(factory, opts = {}) {
       if (typeof raw === 'object' && raw !== null) {
         for (const k of /** @type {(keyof Settings)[]} */ (Object.keys(DEFAULT_SETTINGS))) {
           const v = /** @type {Record<string, unknown>} */ (raw)[k];
-          if (typeof v === typeof DEFAULT_SETTINGS[k]) out[k] = /** @type {any} */ (v);
+          if (typeof v === typeof DEFAULT_SETTINGS[k]) /** @type {Record<string, unknown>} */ (out)[k] = v;
         }
       }
       return out;

@@ -171,12 +171,13 @@ test('設定: 何も保存していなければ既定値。保存した値を開
   const factory = new IDBFactory();
   const s = await open(factory);
   assert.deepEqual(await s.loadSettings(), DEFAULT_SETTINGS);
-  await s.saveSettings({ useBuiltin: false });
+  const mine = { useBuiltin: false, speechAuto: true, speechVoice: 'voice-a', speechRate: 0.7 };
+  await s.saveSettings(mine);
   await s.save(sample());
   await s.restore(other());
   s.close();
   const t = await open(factory);
-  assert.deepEqual(await t.loadSettings(), { useBuiltin: false });
+  assert.deepEqual(await t.loadSettings(), mine);
   t.close();
 });
 
@@ -187,6 +188,17 @@ test('設定: 保存してある設定に無い項目・型の違う項目は既
   await rawPut(factory, 'settings', { useBuiltin: 'no', old: 1 });
   const t = await open(factory);
   assert.deepEqual(await t.loadSettings(), DEFAULT_SETTINGS);
+  t.close();
+});
+
+test('設定: 読み上げの項目を足す前の設定(useBuiltin だけ)は、その値を残して読み上げの項目を既定値で補う', async () => {
+  const factory = new IDBFactory();
+  const s = await open(factory);
+  s.close();
+  await rawPut(factory, 'settings', { useBuiltin: false });
+  const t = await open(factory);
+  assert.deepEqual(await t.loadSettings(), { ...DEFAULT_SETTINGS, useBuiltin: false });
+  assert.equal((await t.loadSettings()).speechAuto, false);
   t.close();
 });
 

@@ -10,6 +10,8 @@ import { reviewMix, recordAnswer, baseDate, answerCount, missOften, stage1Record
 import { studyOrder } from '../../core/studyOrder.js';
 import { buildChoices, quizModes } from '../../core/distractors.js';
 import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
+import { speechText } from '../../core/speech.js';
+import * as speech from '../speech.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/word.js').Word} Word */
@@ -33,6 +35,7 @@ import { BUILTIN_VOCAB } from '../../core/builtinVocab.js';
  * @property {number} ok 正答数
  * @property {number} answered 記録した問題の数(結果の分母)
  * @property {boolean} paused 中断しているか
+ * @property {number} said 見出し語を自動で読み上げた問題の番号(描き直すたびに読み直さないため)
  */
 
 /** 出題する語の選択肢。mix 以外は core の出題順(Docs/21_Quiz.md §7) */
@@ -118,7 +121,7 @@ function start(ctx) {
     const count = st.count === 'all' ? undefined : Number(st.count);
     items = studyOrder(ctx.book, { order: st.source, kind: st.kind, count }).map((word) => ({ word, group: null }));
   }
-  st.quiz = { items, idx: 0, ...fresh(), ok: 0, answered: 0, paused: false };
+  st.quiz = { items, idx: 0, ...fresh(), ok: 0, answered: 0, paused: false, said: -1 };
 }
 
 /** 次の問題へ進むときに消す状態 */
@@ -168,7 +171,8 @@ function renderQuiz(ctx) {
   const note = group ? groupLabel(group, ctx, cur) : orderNote(ctx, cur);
   const head = `<p class="meta">${qz.idx + 1} / ${qz.items.length}${st.format === 'choice' ? ` ｜ 正答 ${qz.ok} ｜ 第 ${qz.stage} 段階` : ''}` +
     (note ? ` ｜ ${note}` : '') + '</p>';
-  const stem = `<div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="en">${esc(cur.en)}</div>`;
+  const stem = `<div class="stemrow"><div class="stem${isPhrase(cur) ? ' ph' : ''}" lang="en">${esc(cur.en)}</div>${sayButton(ctx, 'en', '発音')}</div>`;
+  autoSay(ctx, qz, cur);
   const pause = '<button data-action="pause">中断</button>';
   if (st.format === 'card' || (qz.choice && !qz.choice.ok)) {
     const why = qz.choice && !qz.choice.ok ? `<p class="stagebanner">${REASON[qz.choice.reason]}、4 択を作れません。カードで確かめてください(記録には入りません)。</p>` : '';
@@ -177,7 +181,7 @@ function renderQuiz(ctx) {
     const prev = st.format === 'card' ? '<button data-action="prev">← 前へ</button>' : '';
     return head + `<div class="q card" data-action="flip">${why}${stem}<div class="pos">${posLine(cur)}</div>
       ${qz.reveal ? `<div class="back">${esc(cur.ja ?? '(意味なし)')}</div><div class="ex">${back}</div>` : '<p class="meta">タップで意味を表示</p>'}
-      </div><div class="rowbtns">${prev}<button class="primary" data-action="next">次へ →</button>${pause}</div>`;
+      ${qz.reveal && cur.ex ? `<div class="rowbtns">${sayButton(ctx, 'ex', '例文を聞く')}</div>` : ''}</div><div class="rowbtns">${prev}<button class="primary" data-action="next">次へ →</button>${pause}</div>`;
   }
   const choice = /** @type {import('../../core/distractors.js').ChoiceOk} */ (qz.choice);
   if (qz.stage === 1) {
@@ -206,12 +210,37 @@ function renderQuiz(ctx) {
     }[/** @type {Verdict} */ (qz.verdict)];
     const sub = [cur.exJa, cur.note].filter(Boolean).map(esc).join(' ／ ');
     h += `<div class="fb" role="status">${verdict}${missOften(ctx.book.records, keyOf(cur)) ? ' <span class="meta">よく間違える語</span>' : ''}
-      ${cur.ex ? `<div lang="en">${esc(cur.ex)}</div>` : ''}${sub ? `<div class="meta">${sub}</div>` : ''}
+      ${cur.ex ? `<div><span lang="en">${esc(cur.ex)}</span> ${sayButton(ctx, 'ex', '例文を聞く')}</div>` : ''}${sub ? `<div class="meta">${sub}</div>` : ''}
       <div class="rowbtns left"><button class="primary" data-action="next">次の問題 →</button>${pause}</div></div>`;
   } else {
     h += `<div class="rowbtns">${pause}</div>`;
   }
   return h + '</div>';
+}
+
+/**
+ * 読み上げのボタン。読み上げを持たないブラウザでは出さない。使える音声が無ければ押せなくし、理由を添える(Docs/24_Speech.md)。
+ * @param {Ctx} ctx
+ * @param {'en' | 'ex'} what 見出し語か例文か
+ * @param {string} label
+ */
+function sayButton(ctx, what, label) {
+  if (!speech.supported) return '';
+  const ok = speech.canSpeak(ctx.settings);
+  return `<button type="button" class="say" data-action="say" data-say="${what}"${ok ? '' : ' disabled title="この端末で使える英語の音声がありません(設定タブを見てください)"'}>${label}</button>`;
+}
+
+/**
+ * 設定で自動読み上げを入れていれば、問題を出したときに見出し語を 1 度だけ読む
+ * (答えたあとや再開での描き直しでは読み直さない。カードで前へ戻ると、戻った問題をまた読む)。
+ * @param {Ctx} ctx
+ * @param {Quiz} qz
+ * @param {Word} cur
+ */
+function autoSay(ctx, qz, cur) {
+  if (!ctx.settings.speechAuto || qz.said === qz.idx) return;
+  qz.said = qz.idx;
+  speech.speak(speechText(cur.en), ctx.settings);
 }
 
 /**
@@ -296,11 +325,19 @@ function bind(ctx) {
       return ctx.rerender();
     }
     if (act === 'quit') {
+      speech.stop();
       st.quiz = null;
       return ctx.rerender();
     }
     if (!qz) return;
+    if (act === 'say') {
+      const w = qz.items[qz.idx]?.word;
+      const now = w && ctx.book.words.find((x) => keyOf(x) === keyOf(w));
+      if (now) speech.speak(el.dataset.say === 'ex' ? now.ex ?? '' : speechText(now.en), ctx.settings);
+      return;
+    }
     if (act === 'pause') {
+      speech.stop();
       qz.paused = true;
       return ctx.rerender();
     }

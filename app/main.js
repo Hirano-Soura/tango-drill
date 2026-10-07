@@ -4,6 +4,7 @@
 
 import { openStorage } from './storage.js';
 import { today, esc, actionOf } from './dom.js';
+import * as speech from './speech.js';
 import * as study from './tabs/study.js';
 import * as list from './tabs/list.js';
 import * as add from './tabs/add.js';
@@ -91,6 +92,7 @@ async function main() {
       render();
     },
     go(tab) {
+      speech.stop();
       app.tab = tab;
       app.undo = null;
       render();
@@ -137,6 +139,10 @@ async function main() {
       renderToast();
     }
   };
+  // 音声の一覧はあとから届くことがある。届いたら、音声を使うタブを描き直す(読み上げのボタンと設定の一覧を出し直す)
+  speech.onVoicesChanged(() => {
+    if (app.tab === 'settings' || app.tab === 'study') render();
+  });
   render();
 }
 

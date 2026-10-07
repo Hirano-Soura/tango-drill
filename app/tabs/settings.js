@@ -6,6 +6,8 @@ import { esc, actionOf, download } from '../dom.js';
 import { backupText, parseBackup } from '../../core/backup.js';
 import { countBook } from '../../core/book.js';
 import { VERSION, isPreRelease } from '../../core/version.js';
+import { RATES } from '../../core/speech.js';
+import * as speech from '../speech.js';
 
 /** @typedef {import('../dom.js').Ctx} Ctx */
 /** @typedef {import('../../core/book.js').Book} Book */
@@ -25,6 +27,7 @@ export function render(ctx) {
     <p class="hint">単語帳の語が少ないうちは、誤答の選択肢を内蔵の語彙で補います。内蔵の語彙が問題に出ることはありません。
       切ると、語が 4 語未満のあいだはカードで出題します。</p>
   </section>
+  ${speechPanel(ctx)}
   <section class="panel" id="backup-panel">
     <h2>バックアップ</h2>
     <p class="hint">単語帳と学習の記録を 1 つのファイルに書き出します。機種変更のときや別の端末へ移すときは、
@@ -49,6 +52,8 @@ export function render(ctx) {
 
   const box = /** @type {HTMLInputElement} */ (ctx.root.querySelector('#useBuiltin'));
   box.onchange = () => ctx.setSettings({ ...ctx.settings, useBuiltin: box.checked });
+
+  bindSpeech(ctx);
 
   const file = /** @type {HTMLInputElement} */ (ctx.root.querySelector('#backup-file'));
   file.onchange = async () => {
@@ -87,10 +92,59 @@ export function render(ctx) {
       const c = countBook(next);
       pending = null;
       await run(ctx, () => ctx.restore(next), `バックアップで置き換えました(語数 ${c.words}・記録件数 ${c.answers}・印 ${c.starred})`);
+    } else if (act === 'speech-test') {
+      speech.speak(SAMPLE, ctx.settings);
     } else if (act === 'undo-restore') {
       await run(ctx, () => ctx.undoRestore(), '読み込む前の単語帳に戻しました');
     }
   };
+}
+
+/** 試し聞きの文 */
+const SAMPLE = 'I would like to confirm the itinerary for my business trip.';
+
+/**
+ * 読み上げの欄。使える音声は端末内の英語の音声だけ(INV-1。Docs/24_Speech.md)。
+ * @param {Ctx} ctx
+ * @returns {string}
+ */
+function speechPanel(ctx) {
+  const head = '<section class="panel" id="speech-panel"><h2>読み上げ</h2>';
+  if (!speech.supported) {
+    return head + '<p class="hint" id="speech-note">このブラウザは読み上げに対応していません。別のブラウザ(Chrome・Edge・Safari など)で開くと使えます。</p></section>';
+  }
+  const list = speech.voices();
+  const remote = speech.remoteCount();
+  const s = ctx.settings;
+  const chosenOk = list.some((v) => v.voiceURI === s.speechVoice);
+  const voiceOpts = [['', `自動${list[0] ? `(${list[0].name})` : ''}`], ...list.map((v) => [v.voiceURI, `${v.name}(${v.lang})`])]
+    .map(([val, label]) => `<option value="${esc(val)}"${val === (chosenOk ? s.speechVoice : '') ? ' selected' : ''}>${esc(label)}</option>`).join('');
+  const rateOpts = RATES.map(([r, label]) => `<option value="${r}"${r === s.speechRate ? ' selected' : ''}>${label}</option>`).join('');
+  const note = !list.length
+    ? `この端末のブラウザには、使える英語の音声がありません${remote ? `(インターネット経由の音声が ${remote} 個ありますが、単語を外部へ送らないために使いません)` : ''}。
+      端末の設定で英語の音声を追加するか、別のブラウザで開いてください。Windows は「設定」→「時刻と言語」→「音声認識」の「音声」で英語(米国)の音声を追加できます。`
+    : remote ? `インターネット経由の英語の音声(${remote} 個)は、単語や例文を外部へ送るため一覧に出していません。この端末の中にある音声だけで読みます。` : '';
+  return head + `<div class="check"><input type="checkbox" id="speechAuto"${s.speechAuto ? ' checked' : ''}${list.length ? '' : ' disabled'}>
+      <label for="speechAuto">問題を出したときに見出し語を自動で読み上げる</label></div>
+    <p class="hint">切っていても、学習の画面の「発音」で読み上げられます。答えたあとは例文も読めます。</p>
+    <div class="wordform">
+      <div class="f"><label for="speechVoice">音声</label><select id="speechVoice"${list.length ? '' : ' disabled'}>${voiceOpts}</select></div>
+      <div class="f"><label for="speechRate">速さ</label><select id="speechRate"${list.length ? '' : ' disabled'}>${rateOpts}</select></div>
+    </div>
+    <div class="rowbtns left"><button type="button" data-action="speech-test"${list.length ? '' : ' disabled'}>試し聞き</button></div>
+    ${note ? `<p class="hint" id="speech-note">${note}</p>` : ''}
+  </section>`;
+}
+
+/** @param {Ctx} ctx */
+function bindSpeech(ctx) {
+  const auto = /** @type {HTMLInputElement | null} */ (ctx.root.querySelector('#speechAuto'));
+  const voice = /** @type {HTMLSelectElement | null} */ (ctx.root.querySelector('#speechVoice'));
+  const rate = /** @type {HTMLSelectElement | null} */ (ctx.root.querySelector('#speechRate'));
+  if (auto) auto.onchange = () => ctx.setSettings({ ...ctx.settings, speechAuto: auto.checked });
+  // 選んだら試しに読む(どんな声かをすぐ確かめられるように)
+  if (voice) voice.onchange = () => ctx.setSettings({ ...ctx.settings, speechVoice: voice.value }).then(() => speech.speak(SAMPLE, ctx.settings));
+  if (rate) rate.onchange = () => ctx.setSettings({ ...ctx.settings, speechRate: Number(rate.value) }).then(() => speech.speak(SAMPLE, ctx.settings));
 }
 
 /**
