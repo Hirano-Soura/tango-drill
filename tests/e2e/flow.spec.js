@@ -1,12 +1,13 @@
 // T-5: 追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す を画面で通す。
 // 編集で例文を消すと和訳と出どころも消えること(Docs/20_ImportFormat.md §4)は、保存された中身で確かめる。
 import { test, expect } from '@playwright/test';
-import { storedBook, tab, fits as fitsOn } from './helpers.js';
+import { storedBook, tab, fits as fitsOn, openAddFolds, openAllFolds } from './helpers.js';
 
 test('追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す', async ({ page }) => {
   await page.goto('/');
   // 空の単語帳は追加タブから始まる
   await expect(tab(page, '追加')).toHaveAttribute('aria-selected', 'true');
+  await openAddFolds(page);
 
   // 追加
   await page.getByLabel('見出し語(英語)').fill('allocate');
@@ -65,6 +66,7 @@ test('追加 → 学習 → 記録 → 編集 → 削除 → 元に戻す', asyn
 
 test('「わからない」のあとに選んだものは記録に入らない(1 問で 1 件)', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('見出し語(英語)').fill('itinerary');
   await page.getByLabel('意味').fill('旅程');
   await page.getByRole('button', { name: '追加する' }).click();
@@ -86,6 +88,7 @@ test('「わからない」のあとに選んだものは記録に入らない(1
 
 test('4 択を作れない問題はカードで出し、記録せず、前へ戻るボタンも出さない', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   for (const [en, ja] of [['itinerary', '旅程'], ['tentative', '']]) {
     await page.getByLabel('見出し語(英語)').fill(en);
     await page.getByLabel('意味').fill(ja);
@@ -121,6 +124,7 @@ test('4 択を作れない問題はカードで出し、記録せず、前へ戻
 test('スマホ幅でも、どのタブも横にはみ出さない', async ({ page }, info) => {
   test.skip(info.project.name !== 'phone', 'スマホ幅だけで確かめる');
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('見出し語(英語)').fill('on behalf of the organizing committee of the annual conference');
   await page.getByLabel('意味').fill('年次会議の組織委員会を代表して、とても長い訳語がここに入る場合');
   await page.getByLabel('例文', { exact: true }).fill('Averyveryverylongwordwithoutanyspacesthatcouldoverflowthelayoutonphones.');
@@ -128,6 +132,8 @@ test('スマホ幅でも、どのタブも横にはみ出さない', async ({ pa
   const fits = (/** @type {string} */ where) => fitsOn(page, where);
   for (const name of ['学習', '単語帳', '追加', '記録', '設定', 'Q&A', '通知']) {
     await tab(page, name).click();
+    // 開閉できる欄は既定で閉じているので、開いて中身まで見る
+    await openAllFolds(page);
     await fits(`${name} タブ`);
   }
   // 各タブの最初の画面以外: クイズの 2 段階・記録の表・単語帳の編集欄
@@ -148,6 +154,7 @@ test('スマホ幅でも、どのタブも横にはみ出さない', async ({ pa
 
 test('既にある語を追加しようとすると、足さずに編集へ案内する(INV-4)', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   const addSecure = async () => {
     await page.getByLabel('見出し語(英語)').fill('secure');
     await page.getByLabel('品詞').fill('形');
@@ -165,6 +172,7 @@ test('既にある語を追加しようとすると、足さずに編集へ案�
 
 test('利用者の入力は HTML として解釈しない', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('見出し語(英語)').fill('<img src=x onerror=alert(1)>tag');
   await page.getByLabel('意味').fill('<b>太字</b>');
   await page.getByRole('button', { name: '追加する' }).click();
@@ -174,18 +182,23 @@ test('利用者の入力は HTML として解釈しない', async ({ page }) => 
   await expect(page.locator('ul.words')).toContainText('<b>太字</b>');
 });
 
-test('追加タブの 3 つの欄は開閉でき、描き直しても開閉が残る', async ({ page }) => {
+test('追加タブの 3 つの欄は既定で閉じ、開閉でき、描き直しても開閉が残る', async ({ page }) => {
   await page.goto('/');
+  // 既定は閉じている
   for (const id of ['add-panel', 'ai-panel', 'import-panel']) {
     const d = page.locator(`#${id}`);
-    await expect(d).toHaveJSProperty('open', true);
-    await d.locator('summary').click();
     await expect(d).toHaveJSProperty('open', false);
+    await d.locator('summary').click();
+    await expect(d).toHaveJSProperty('open', true);
   }
-  // 別のタブへ移って戻しても閉じたまま
+  // 別のタブへ移って戻しても開いたまま。閉じれば閉じたまま
+  await page.locator('#ai-panel summary').click();
   await tab(page, '単語帳').click();
   await tab(page, '追加').click();
+  await expect(page.locator('#add-panel')).toHaveJSProperty('open', true);
+  await expect(page.locator('#import-panel')).toHaveJSProperty('open', true);
   await expect(page.locator('#ai-panel')).toHaveJSProperty('open', false);
-  await page.locator('#ai-panel summary').click();
-  await expect(page.locator('#ai-panel')).toHaveJSProperty('open', true);
+  // 開き直すと、すべて閉じた状態に戻る
+  await page.reload();
+  for (const id of ['add-panel', 'ai-panel', 'import-panel']) await expect(page.locator(`#${id}`)).toHaveJSProperty('open', false);
 });

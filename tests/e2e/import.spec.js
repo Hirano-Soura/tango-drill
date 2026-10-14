@@ -1,7 +1,7 @@
 // T-5.1: 取り込みは 貼り付け → 確認表 → 確定 の順を経ないと単語帳を変えない(INV-2 の画面側)。
 // 確認表の規則そのもの(行の種類・重ね方)は tests/core/importPlan.test.js が見る。ここでは画面が必ずそれを通すことを見る。
 import { test, expect } from '@playwright/test';
-import { storedBook, fits } from './helpers.js';
+import { storedBook, fits, openAddFolds } from './helpers.js';
 import { SIMPLE_EXAMPLE } from '../../core/importFormat.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
@@ -33,6 +33,7 @@ const words = async (page) => (await storedBook(page)).words;
 
 test('貼り付け → 確認表 → 選択 → 確定 の順を経て初めて単語帳が変わり、元に戻せる(INV-2)', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await addByForm(page, 'allocate', '動', '割り当てる');
   const before = [{ en: 'allocate', pos: '動', ja: '割り当てる' }];
 
@@ -78,6 +79,7 @@ test('貼り付け → 確認表 → 選択 → 確定 の順を経て初めて�
 
 test('確認表を作ったあとに単語帳が変わったら確定させない。作り直せば取り込める', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('貼り付ける内容').fill('itinerary | 名 | 旅程');
   await page.getByRole('button', { name: '確認表を作る' }).click();
   await expect(planRow(page, 'itinerary')).toContainText('足す');
@@ -97,6 +99,7 @@ test('確認表を作ったあとに単語帳が変わったら確定させな�
 
 test('やめると単語帳は変わらない。ファイルからも同じ確認表を通す', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('ファイルから読む').setInputFiles('tests/core/fixtures/import/tango-drill_v1.json');
   await expect(page.getByLabel('貼り付ける内容')).toHaveValue(/"format": "tango-drill\/v1"/);
   expect(await words(page)).toEqual([]);
@@ -124,6 +127,7 @@ test('やめると単語帳は変わらない。ファイルからも同じ確�
 
 test('当て先の決まらない行は、既定では取り込まず、選んだ語にだけ当てる', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await addByForm(page, 'secure', '形', '安全な');
   await addByForm(page, 'secure', '動', '確保する');
   const before = await words(page);
@@ -147,6 +151,7 @@ test('当て先の決まらない行は、既定では取り込まず、選ん�
 
 test('品詞の有無だけが違う同じ綴りの行は既定で 1 語にまとめ、意味だけが違う行は別の意味として並べられる', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await addByForm(page, 'run', '動', '走る');
 
   await page.getByLabel('貼り付ける内容').fill('itinerary | | 旅程表\nitinerary | 名\nrun | 動 | 経営する');
@@ -166,6 +171,7 @@ test('品詞の有無だけが違う同じ綴りの行は既定で 1 語にま�
 
 test('空の貼り付け欄には例を灰色で見せ(値は空)、「例を入れる」で入れた例はそのまま取り込める。入力があるときは例で消さない', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   const box = page.getByLabel('貼り付ける内容');
   const btn = page.getByRole('button', { name: '例を入れる' });
   // 例は placeholder(値ではない)。そのまま「確認表を作る」を押すと、空の入力として断る

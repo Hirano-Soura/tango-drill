@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { aiPrompt } from '../../core/aiPrompt.js';
-import { storedBook, fits } from './helpers.js';
+import { storedBook, fits, openAddFolds } from './helpers.js';
 
 const replies = JSON.parse(readFileSync('tests/core/fixtures/ai/replies.json', 'utf8'));
 
@@ -11,6 +11,7 @@ test('依頼文を作ってコピーし、AI の返答を貼って確認表か�
   // 例文も頼んだ見本のどれか(台帳の並びに依らない)
   const entry = replies.find((/** @type {{ examples: boolean }} */ e) => e.examples);
   await page.goto('/');
+  await openAddFolds(page);
   // 1 語の追加欄に入力中の値は、依頼文を作っても消えない
   await page.getByLabel('見出し語(英語)').fill('typing');
   await page.getByLabel('頼む語(1 行に 1 つ)').fill([...entry.words, '請求書', entry.words[0]].join('\n'));
@@ -42,6 +43,7 @@ test('依頼文を作ってコピーし、AI の返答を貼って確認表か�
 
 test('頼む語が無ければ依頼文を作らない', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await page.getByLabel('頼む語(1 行に 1 つ)').fill('請求書\n\n');
   await page.getByRole('button', { name: '依頼文を作る' }).click();
   await expect(page.locator('#ai-msg')).toHaveText('頼む語を 1 行に 1 つ書いてください');

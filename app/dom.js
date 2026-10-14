@@ -90,16 +90,17 @@ export function actionOf(e) {
   return t instanceof Element ? /** @type {HTMLElement | null} */ (t.closest('[data-action]')) : null;
 }
 
-/** 開閉できる欄の状態(id → 閉じているか)。描き直しても残す。既定は開いている */
-const closedFolds = new Set();
+/** 開閉できる欄のうち、開いているもの(id)。描き直しても残す。既定は閉じている */
+const openFolds = new Set();
 
 /**
  * 開閉できる欄(details)の開始タグ。開閉は folds の記録に合わせる。
  * @param {string} id
+ * @param {string} [cls] panel fold に足すクラス
  * @returns {string}
  */
-export function foldOpen(id) {
-  return `<details class="panel fold" id="${id}"${closedFolds.has(id) ? '' : ' open'}>`;
+export function foldOpen(id, cls = '') {
+  return `<details class="panel fold${cls ? ' ' + cls : ''}" id="${id}"${openFolds.has(id) ? ' open' : ''}>`;
 }
 
 /**
@@ -107,7 +108,7 @@ export function foldOpen(id) {
  * @param {string} id
  */
 export function unfold(id) {
-  closedFolds.delete(id);
+  openFolds.add(id);
 }
 
 /**
@@ -117,8 +118,8 @@ export function unfold(id) {
 export function bindFolds(root) {
   for (const d of root.querySelectorAll('details.fold')) {
     d.addEventListener('toggle', () => {
-      if (/** @type {HTMLDetailsElement} */ (d).open) closedFolds.delete(d.id);
-      else closedFolds.add(d.id);
+      if (/** @type {HTMLDetailsElement} */ (d).open) openFolds.add(d.id);
+      else openFolds.delete(d.id);
     });
   }
 }

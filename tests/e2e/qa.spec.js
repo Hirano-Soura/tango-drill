@@ -3,18 +3,19 @@
 import { test, expect } from '@playwright/test';
 import { SURVEY_URL } from '../../app/links.js';
 import { VERSION } from '../../core/version.js';
-import { tab, fits } from './helpers.js';
+import { tab, fits, openFold } from './helpers.js';
 
 test('Q&A タブ: 質問を開ける・欄の開閉がタブを移っても残る・アンケートは新しいタブで開くリンク', async ({ page }) => {
   await page.goto('/');
   await tab(page, 'Q&A').click();
   await expect(tab(page, 'Q&A')).toHaveAttribute('aria-selected', 'true');
 
-  // 2 つの欄は既定で開いている(追加タブの欄と同じ)
+  // 2 つの欄は既定で閉じている(追加タブの欄と同じ)。押すと開く
   const qaPanel = page.locator('#qa-panel');
   const survey = page.locator('#survey-panel');
-  await expect(qaPanel).toHaveAttribute('open', '');
-  await expect(survey).toHaveAttribute('open', '');
+  await expect(qaPanel).not.toHaveAttribute('open', '');
+  await expect(survey).not.toHaveAttribute('open', '');
+  await openFold(page, 'qa-panel', 'survey-panel');
 
   // 質問は閉じていて、押すと答えが出る
   const q = page.locator('details.qa', { hasText: '別の端末に移したい' });

@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import { transPrompt } from '../../core/aiPrompt.js';
 import { emptyBook } from '../../core/book.js';
-import { storedBook, seedBook, tab, fits } from './helpers.js';
+import { storedBook, seedBook, tab, fits, openFold } from './helpers.js';
 
 /**
  * 自他の無い動詞 2 語・自他のある動詞 1 語・名詞 1 語の単語帳
@@ -29,16 +29,29 @@ test('通知タブ: 読んでいない重要なお知らせがあればボタン
   await notice.click();
   await expect(notice).toHaveAttribute('aria-selected', 'true');
   await expect(notice.locator('.dot')).toHaveCount(0);
+  // お知らせは既定で閉じていて、閉じたままでも題と印が見える。
   // 開いたときに読んでいなかったものには「新着」、重要なものには「重要」
   const trans = page.locator('#notice-2026-10-07-trans');
-  await expect(trans).toContainText('新着');
-  await expect(trans).toContainText('重要');
+  await expect(page.locator('details.notice')).toHaveCount(2);
+  for (const d of await page.locator('details.notice').all()) await expect(d).toHaveJSProperty('open', false);
+  const head = trans.locator(':scope > summary');
+  await expect(head).toBeVisible();
+  await expect(head).toContainText('動詞に「他」「自」の印が付くようになりました');
+  await expect(head).toContainText('新着');
+  await expect(head).toContainText('重要');
+  await expect(trans.locator('#trans-count')).toBeHidden();
+  if (info.project.name === 'phone') await fits(page, '通知タブ(閉じたところ)');
+  // 押すと本文と操作が出る
+  await openFold(page, 'notice-2026-10-07-trans');
+  await expect(trans.locator('#trans-count')).toBeVisible();
   await expect(trans.locator('#trans-count')).toHaveText('今の単語帳には、自他の無い動詞はありません。');
   if (info.project.name === 'phone') await fits(page, '通知タブ');
   // 別のタブへ移って戻ると「新着」は消える。開き直しても点は出ない(端末に覚えている)
+  // 開いたお知らせは、タブを移って戻っても開いたまま
   await tab(page, '設定').click();
   await notice.click();
   await expect(trans).not.toContainText('新着');
+  await expect(trans).toHaveJSProperty('open', true);
   await page.reload();
   await expect(tab(page, '通知').locator('.dot')).toHaveCount(0);
 });
@@ -72,11 +85,15 @@ test('既存の語に自他を補う: 通知から依頼文を作り、返答を
   await page.goto('/');
   await seedBook(page, BOOK());
   await tab(page, '通知').click();
+  await openFold(page, 'notice-2026-10-07-trans');
   await expect(page.locator('#trans-count')).toHaveText('今の単語帳に、自他の無い動詞が 2 語あります。');
   await page.getByRole('button', { name: '自他を補う依頼文を作る' }).click();
 
-  // 追加タブの「AI に頼む」に、自他の無い動詞だけの依頼文が出る(AI へは何も送らない)
+  // 追加タブの「AI に頼む」に、自他の無い動詞だけの依頼文が出る(AI へは何も送らない)。
+  // 案内した先の欄は開いている(ほかの欄は既定どおり閉じている)
   await expect(tab(page, '追加')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#ai-panel')).toHaveJSProperty('open', true);
+  await expect(page.locator('#import-panel')).toHaveJSProperty('open', false);
   const want = transPrompt([{ en: 'reimburse', pos: '動' }, { en: 'estimate', pos: '名/動' }]);
   await expect(page.getByLabel('AI への依頼文(自他を補う)')).toHaveValue(want);
   if (info.project.name === 'phone') await fits(page, '自他を補う依頼文');
@@ -84,6 +101,7 @@ test('既存の語に自他を補う: 通知から依頼文を作り、返答を
   expect((await storedBook(page)).words).toEqual(BOOK().words);
 
   // AI の返答(見出し語と品詞を書き写して自他を添えたもの)を貼る → 確認表 → 確定
+  await openFold(page, 'import-panel');
   await page.getByLabel('貼り付ける内容').fill('```\nreimburse | 動(他)\nestimate | 名/動(他)\n```');
   await page.getByRole('button', { name: '確認表を作る' }).click();
   await expect(page.locator('#plan li.prow .act')).toHaveText(['既存の語に重ねる', '既存の語に重ねる']);

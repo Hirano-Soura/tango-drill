@@ -50,3 +50,31 @@ export async function fits(page, where) {
   const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
   expect(sw, where).toBeLessThanOrEqual(iw);
 }
+
+/**
+ * 開閉できる欄(details.fold)を開く。欄は既定で閉じている(Docs/23_Screens.md §5)。開いていれば何もしない。
+ * @param {Page} page
+ * @param {...string} ids
+ */
+export async function openFold(page, ...ids) {
+  for (const id of ids) {
+    const d = page.locator(`#${id}`);
+    if (!(await d.evaluate((e) => /** @type {HTMLDetailsElement} */ (e).open))) await d.locator(':scope > summary').click();
+    await expect(d).toHaveJSProperty('open', true);
+  }
+}
+
+/**
+ * 追加タブの 3 つの欄をすべて開く(ページを開き直すと閉じるので、そのたびに呼ぶ)。
+ * @param {Page} page
+ */
+export const openAddFolds = (page) => openFold(page, 'add-panel', 'ai-panel', 'import-panel');
+
+/**
+ * 今のタブに見えている開閉できる欄を、すべて開く(はみ出しを中身まで見るとき)。
+ * @param {Page} page
+ */
+export async function openAllFolds(page) {
+  const closed = page.locator('details.fold:not([open]) > summary:visible');
+  while (await closed.count()) await closed.first().click();
+}

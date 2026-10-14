@@ -1,7 +1,7 @@
 // 単語帳タブの絞り込み欄: 日本語入力(IME)の変換中に欄が作り直されず、変換した語で絞り込めること。
 // 打つたびにタブ全体を描き直すと欄が差し替わり、変換が 1 文字ごとに切れる(「rいngお」になる)。
 import { test, expect } from '@playwright/test';
-import { tab } from './helpers.js';
+import { tab, openAddFolds } from './helpers.js';
 
 /**
  * @param {import('@playwright/test').Page} page
@@ -19,6 +19,7 @@ async function addWord(page, en, ja, pos = '名') {
 
 test('絞り込み欄は変換中に作り直されず、変換した語で絞り込める', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await addWord(page, 'apple', 'リンゴ');
   await addWord(page, 'orange', 'オレンジ');
   await tab(page, '単語帳').click();
@@ -62,6 +63,7 @@ test('絞り込み欄は変換中に作り直されず、変換した語で絞�
 
 test('品詞の名前・「句表現」・空白区切りの AND で絞り込める(規則の細部は tests/core/search.test.js)', async ({ page }) => {
   await page.goto('/');
+  await openAddFolds(page);
   await addWord(page, 'apple', 'リンゴ');
   await addWord(page, 'despite', '～にもかかわらず', '前');
   await addWord(page, 'in accordance with', '～に従って', '前置詞句');
